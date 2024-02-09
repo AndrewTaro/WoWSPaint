@@ -1,12 +1,16 @@
 (def constant WoWSPaint_PALETTE_COLORS [
-	"SC.Ui_styles.SERVICE_COLORS.WHITE",
+	-1,
 	0xFFFF0000,
 	0xFF00FF00,
 	0xFF0000FF,
-	0xFF000000,
+	"SC.Ui_styles.SERVICE_COLORS.WHITE",
 	"SC.Ui_styles.SERVICE_COLORS.RED",
 	"SC.Ui_styles.SERVICE_COLORS.GREEN",
 	"SC.Ui_styles.SERVICE_COLORS.LIGHT_BLUE",
+	0xFF000000,
+	"SC.Ui_styles.SERVICE_COLORS.DARK_RED"
+	"SC.Ui_styles.SERVICE_COLORS.LIGHT_GREEN"
+	"SC.Ui_styles.SERVICE_COLORS.DARK_BLUE"
 ])
 (def constant WoWSPaint_PALETTE_COLUMN_COUNT "4")
 
@@ -21,14 +25,27 @@
 		(event evStopDraw)
 		(event evClearDraw)
 		(event evChangeColor)
+		(event evClearButtonClick)
+		(event evCheckMouseBeforeClear)
+		#(event evBackButtonClick)
+		#(event evBackDraw)
+
+		(event evChildrenCountChange)
 
 		(var mouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
 		(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
+
+		(var playerAvatar:gfx = "$datahub.getSingleComponent(CC.playerAvatar)")
+		(var isPlayer:bool = "playerAvatar")
 
 		(var isDrawing:bool = "$event.isDrawing" watch=false init=false (event "evStartDraw") (event "evStopDraw"))
 
 		(var lineColor:number = "SC.Ui_styles.SERVICE_COLORS.WHITE" watch=false)
 		(bind lineColor "$event.color" watch=false (event "evChangeColor"))
+
+		(var isEraser:bool = "lineColor < 0")
+
+		#(var numChildren:number = "0")
 	)
 
 	(style
@@ -37,38 +54,77 @@
 	)
 
 	(dispatch evMouseInactive (bind enabled "!isMouseActive") (bind trigger "isMouseActive"))
-	(dispatch evStartDraw args="{isDrawing:true, x: $event.x, y: $event.y}" (event "evMouseDown"))
-	(dispatch evStopDraw args="{isDrawing:false}" (event "evMouseUp") (event "evMouseInactive"))
+	(dispatch evStartDraw	dir="EventDirection.DOWN" args="{isDrawing:true, x: $event.x, y: $event.y}" (event "evMouseDown"))
+	(dispatch evStopDraw	dir="EventDirection.DOWN" args="{isDrawing:false}" (event "evMouseUp") (event "evMouseInactive"))
+	(dispatch evClearDraw	dir="EventDirection.DOWN" args="{}" (event "evClearButtonClick"))
+	#(dispatch evBackDraw	dir="EventDirection.DOWN" args="{}" (event "evBackButtonClick"))
 	#(dispatch evClearDraw args="{}" delay=3 (event "evMouseInactive"))
-	(macro eventChecker "evClearDraw")
+	(dispatch evCheckMouseBeforeClear args="{}" delay=2 (bind enabled "isPlayer") (event "evMouseInactive"))
+	(dispatch evClearDraw args="{}" dir="EventDirection.DOWN" (bind enabled "!isMouseActive") (event "evCheckMouseBeforeClear"))
+	#(macro eventChecker "evMouseDown")
 
 	#canvas
 	(block
 		(style
 			(width = "100%")
-			(height = "100%")
-			(hitTest = false)
-			(position = "absolute")
+	 		(height = "100%")
+	 		#(hitTest = true)
+	 		(position = "absolute")
+			#(backgroundColor = 0x00FFFFFF)
 		)
 
+		#(dispatch evMouseDown args="{x: $event.stageX, y: $event.stageY}" on='mouseDown') #requires hitTest=true and backgroundColor
 		(dispatch evMouseDown args="{x: $event.stageX, y: $event.stageY}" on='stageMouseDown')
-		(dispatch evMouseUp args="{}" on='stageMouseUp')
-		(dispatch evMouseMove on='stageMouseMove' args="{x: $event.stageX, y: $event.stageY}" (bind enabled "isDrawing"))
+		(dispatch evMouseUp dir="EventDirection.DOWN"  args="{}" on='stageMouseUp')
+		(dispatch evMouseMove dir="EventDirection.DOWN" on='stageMouseMove' args="{x: $event.stageX, y: $event.stageY}" (bind enabled "isDrawing"))
 
-		(.graphics
-			(lineStyle "3" "0xFFFFFFFF")
-			(bindcall moveTo "$event.x" "$event.y" (event "evStartDraw"))
-			(bindcall lineTo "$event.x" "$event.y" (event "evMouseMove"))
-			(bindcall clear (event "evClearDraw"))
-			(bindcall lineStyle "3" "lineColor" (event "evClearDraw"))
+		(controller $Repeat renderer='WoWSPaint_LayerElement'
+			(bind count "0" watch=false (event "evClearDraw"))
+			(args
+				_currentColor="lineColor"
+			)
+			(bindcall addChildAt "0" (event "evStartDraw"))
 		)
-		(tf
-			(bind text "isDrawing")
-		)
+		(blendMode = 'layer')
 	)
-
 	#controls
 	(element WoWSPaint_ControlElement _currentColor="lineColor")
+)
+
+(def element WoWSPaint_LayerElement(_currentColor:number)
+	(scope
+		(event evStartDraw)
+		(event evClearDraw)
+		(event evMouseMove)
+		(event evMouseUp)
+
+		#(event evChildrenCountChange)
+
+		(var isEraser:bool = "_currentColor < 0" watch=false)
+		(var brushSize:number = "isEraser ? 50 : 3")
+
+		(var isActiveLayer:bool = "true" watch=false)
+		(bind isActiveLayer "false" init=false (event "evMouseUp"))
+	)
+
+	#(dispatch evChildrenCountChange dir="EventDirection.UP" args="{value: 1}" on='addedToStage')
+	#(dispatch evChildrenCountChange dir="EventDirection.UP" args="{value: -1}" on='removedFromStage')
+
+	(style
+		(width = "100%")
+		(height = "100%")
+		(hitTest = false)
+		(position = "absolute")
+	)
+
+	(.graphics
+		(bindcall lineStyle "brushSize" "_currentColor" (bind enabled "isActiveLayer") (event "evStartDraw"))
+		(bindcall moveTo "$event.x" "$event.y" (bind enabled "isActiveLayer") (event "evStartDraw"))
+		(bindcall lineTo "$event.x" "$event.y" (bind enabled "isActiveLayer") (event "evMouseMove"))
+		(bindcall clear (event "evClearDraw"))
+	)
+	(blendMode = "isEraser ? 'subtract' : 'layer'")
+	# Do not use BlendMode.ERASE since it literally erases everything, including the layers above it.
 )
 
 (def element WoWSPaint_ControlElement(_currentColor:number)
@@ -92,6 +148,9 @@
 			#reset
 			(element WoWSPaint_ResetButtonElement)
 
+			#undo
+			#(element WoWSPaint_BackButtonElement)
+
 			#color palette
 			(element WoWSPaint_ColorPaletteElement _currentColor="_currentColor")
 		)
@@ -100,7 +159,7 @@
 
 (def element WoWSPaint_ResetButtonElement()
 	(scope
-		(event evClearDraw)
+		(event evClearButtonClick)
 		(macro MOUSE_HANDLER_SCOPE)
 
 		(var isDown:bool = "mouseDown")
@@ -135,7 +194,52 @@
 								isDown					? ctDown
 														: CT_NONE")
 
-		(dispatch evClearDraw on='click' args="{}" dir="EventDirection.UP")
+		(dispatch evClearButtonClick on='click' args="{}" dir="EventDirection.UP")
+		(dispatch evRollOver on='rollOver' args="{}" dir="EventDirection.NONE")
+		(macro MOUSE_HANDLER
+			_soundSet = "'button_context'"
+		)
+	)
+)
+
+(def element WoWSPaint_BackButtonElement()
+	(scope
+		(event evBackButtonClick)
+		(macro MOUSE_HANDLER_SCOPE)
+
+		(var isDown:bool = "mouseDown")
+		(var isRollover:bool = "rollOver")
+
+		(var ctRollOver:dict = "{ redMultiplier: 1,	greenMultiplier: 1,	blueMultiplier: 1,	alphaMultiplier: 1,
+								  redOffset: 15,	greenOffset: 15,	blueOffset: 15,		alphaOffset: 0 }")
+		(var ctDown:dict = "	{ redMultiplier: 1,	greenMultiplier: 1,	blueMultiplier: 1,	alphaMultiplier: 1,
+								  redOffset: -15,	greenOffset: -15,	blueOffset: -15,	alphaOffset: 0 }")
+	)
+
+	(hblock
+		(style
+			(align = "middle|center")
+		)
+		(tf
+			(text = "'UNDO'")
+			(class $TextDefaultBoldNM)
+			(style
+				(marginRight = 10px)
+			)
+		)
+		(block
+			(style
+				(width = 18)
+				(height = 18)
+				(backgroundImage = "'url:../service_kit/buttons/context/update.png'")
+			)
+		)
+
+		(bind colorTransform "	isRollover && !isDown	? ctRollOver :
+								isDown					? ctDown
+														: CT_NONE")
+
+		(dispatch evBackButtonClick on='click' args="{}" dir="EventDirection.UP")
 		(dispatch evRollOver on='rollOver' args="{}" dir="EventDirection.NONE")
 		(macro MOUSE_HANDLER
 			_soundSet = "'button_context'"
@@ -184,6 +288,8 @@
 		(event evChangeColor)
 		(var colorValue:number = "_color")
 		(var isSelected:bool = "colorValue == _currentColor")
+
+		(var isEraser:bool = "colorValue < 0")
 
 		(var paletteSize:number = "29")
 		(var palettePos:number = "paletteSize / 2")
@@ -236,6 +342,21 @@
 				(pivotY = 50%)
 				(bind backgroundColor "colorValue")
 			)
+			(bind visible "!isEraser")
+		)
+		(block
+			(style
+				(position = "absolute")
+				(width = 100%)
+				(height = 100%)
+				(left = "palettePos")
+				(top = "palettePos")
+				(pivotX = 50%)
+				(pivotY = 50%)
+				(backgroundImage = "'url:../battle_hud/markers/can_hit/icon_cant_hit.png'")
+				(backgroundSize = "fill")
+			)
+			(bind visible "isEraser")
 		)
 	)
 
