@@ -175,8 +175,6 @@
 
 	(dispatch evMouseDown args="{}" on='mouseDown')
 	(dispatch evMouseUp args="{}" on='stageMouseUp')
-	(dispatch evRollOver args="{}" on='rollOver')
-	(dispatch evMouseOut args="{}" on='rollOut')
 
 	(dispatch evMouseInactive (bind enabled "!isMouseActive") (bind trigger "isMouseActive"))
 	(dispatch evStartDrag args="{}" (event "evMouseDown"))
