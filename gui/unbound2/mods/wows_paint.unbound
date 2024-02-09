@@ -3,14 +3,14 @@
 	0xFFFF0000,
 	0xFF00FF00,
 	0xFF0000FF,
-	"SC.Ui_styles.SERVICE_COLORS.WHITE",
-	"SC.Ui_styles.SERVICE_COLORS.RED",
-	"SC.Ui_styles.SERVICE_COLORS.GREEN",
-	"SC.Ui_styles.SERVICE_COLORS.LIGHT_BLUE",
+	0xFFFFFFFF,
+	0xFFFF6600,
+	0xFF4CE8AA,
+	0xFF13C9F7,
 	0xFF000000,
-	"SC.Ui_styles.SERVICE_COLORS.DARK_RED"
-	"SC.Ui_styles.SERVICE_COLORS.LIGHT_GREEN"
-	"SC.Ui_styles.SERVICE_COLORS.DARK_BLUE"
+	0xFFAB45E6,
+	0xFFFF96CA,
+	0xFFFFCC66,
 ])
 (def constant WoWSPaint_PALETTE_COLUMN_COUNT "4")
 
@@ -92,22 +92,26 @@
 
 (def element WoWSPaint_BrushElement(_currentColor:number, _size:number)
 	(scope
+		(event evPositionUpdate)
 		(var mouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
 		(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
 		(var isSmall:bool = "_size < 5 ? true : false")
 	)
+
 	(bind visible "isMouseActive")
+	
+	(dispatch evPositionUpdate args={} (bind enabled "isMouseActive") (event "evEnterFrame"))
+
 	(style
 		(position = "absolute")
 		(hitTest = false)
-		(bind left "mouse.x" (bind enabled "isMouseActive") (event "evEnterFrame"))
-		(bind top "mouse.y" (bind enabled "isMouseActive") (event "evEnterFrame"))
+		(bind left "mouse.x" (event "evPositionUpdate"))
+		(bind top "mouse.y" (event "evPositionUpdate"))
 	)
-	#(macro trace "'mouseHere'")
+
 	(controller $Sector
 		(bind arc "360")
 		(bind radius "isSmall ? _size : _size / 2")
-		#(bind innerRadius "_size")
 		(bind lineColor "_currentColor")
 		(bind lineThickness "isSmall ? 2 : 1")
 		(bind lineAlpha "isSmall ? 1.0 : 0.4")
