@@ -27,8 +27,6 @@
 		(event evChangeColor)
 		(event evClearButtonClick)
 		(event evCheckMouseBeforeClear)
-		#(event evBackButtonClick)
-		#(event evBackDraw)
 
 		(event evChildrenCountChange)
 
@@ -40,12 +38,11 @@
 
 		(var isDrawing:bool = "$event.isDrawing" watch=false init=false (event "evStartDraw") (event "evStopDraw"))
 
-		(var lineColor:number = "SC.Ui_styles.SERVICE_COLORS.WHITE" watch=false)
-		(bind lineColor "$event.color" watch=false (event "evChangeColor"))
+		(var brushColor:number = "SC.Ui_styles.SERVICE_COLORS.WHITE" watch=false)
+		(bind brushColor "$event.color" watch=false (event "evChangeColor"))
 
-		(var isEraser:bool = "lineColor < 0")
-
-		#(var numChildren:number = "0")
+		(var isEraser:bool = "brushColor < 0")
+		(var brushSize:number = "isEraser ? 50 : 3")
 	)
 
 	(style
@@ -57,20 +54,17 @@
 	(dispatch evStartDraw	dir="EventDirection.DOWN" args="{isDrawing:true, x: $event.x, y: $event.y}" (event "evMouseDown"))
 	(dispatch evStopDraw	dir="EventDirection.DOWN" args="{isDrawing:false}" (event "evMouseUp") (event "evMouseInactive"))
 	(dispatch evClearDraw	dir="EventDirection.DOWN" args="{}" (event "evClearButtonClick"))
-	#(dispatch evBackDraw	dir="EventDirection.DOWN" args="{}" (event "evBackButtonClick"))
-	#(dispatch evClearDraw args="{}" delay=3 (event "evMouseInactive"))
 	(dispatch evCheckMouseBeforeClear args="{}" delay=2 (bind enabled "isPlayer") (event "evMouseInactive"))
 	(dispatch evClearDraw args="{}" dir="EventDirection.DOWN" (bind enabled "!isMouseActive") (event "evCheckMouseBeforeClear"))
-	#(macro eventChecker "evMouseDown")
 
 	#canvas
 	(block
 		(style
 			(width = "100%")
 	 		(height = "100%")
-	 		#(hitTest = true)
 	 		(position = "absolute")
 			#(backgroundColor = 0x00FFFFFF)
+			#(hitTest = true)
 		)
 
 		#(dispatch evMouseDown args="{x: $event.stageX, y: $event.stageY}" on='mouseDown') #requires hitTest=true and backgroundColor
@@ -80,15 +74,45 @@
 
 		(controller $Repeat renderer='WoWSPaint_LayerElement'
 			(bind count "0" watch=false (event "evClearDraw"))
+			# Destroy all the layers so they don't remain.
+			# Apparently, addChildAt can handle the element addition without binding count.
 			(args
-				_currentColor="lineColor"
+				_currentColor="brushColor"
 			)
 			(bindcall addChildAt "0" (event "evStartDraw"))
 		)
 		(blendMode = 'layer')
 	)
 	#controls
-	(element WoWSPaint_ControlElement _currentColor="lineColor")
+	(element WoWSPaint_ControlElement _currentColor="brushColor")
+
+	#brush
+	(element WoWSPaint_BrushElement _currentColor="brushColor" _size="brushSize")
+)
+
+(def element WoWSPaint_BrushElement(_currentColor:number, _size:number)
+	(scope
+		(var mouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
+		(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
+		(var isSmall:bool = "_size < 5 ? true : false")
+	)
+	(bind visible "isMouseActive")
+	(style
+		(position = "absolute")
+		(hitTest = false)
+		(bind left "mouse.x" (bind enabled "isMouseActive") (event "evEnterFrame"))
+		(bind top "mouse.y" (bind enabled "isMouseActive") (event "evEnterFrame"))
+	)
+	#(macro trace "'mouseHere'")
+	(controller $Sector
+		(bind arc "360")
+		(bind radius "isSmall ? _size : _size / 2")
+		#(bind innerRadius "_size")
+		(bind lineColor "_currentColor")
+		(bind lineThickness "isSmall ? 2 : 1")
+		(bind lineAlpha "isSmall ? 1.0 : 0.4")
+	)
+	(cacheAsBitmap=true)
 )
 
 (def element WoWSPaint_LayerElement(_currentColor:number)
@@ -98,17 +122,16 @@
 		(event evMouseMove)
 		(event evMouseUp)
 
-		#(event evChildrenCountChange)
-
+		# Drawing starts as soon as element initialization completes
+		# So color and isEraser should not change during that phase.
 		(var isEraser:bool = "_currentColor < 0" watch=false)
 		(var brushSize:number = "isEraser ? 50 : 3")
 
+		# Layer becomes Active by default when entering the stage.
+		# Then it becomes Inactive if the mouse button is up, or drawing ends.
 		(var isActiveLayer:bool = "true" watch=false)
 		(bind isActiveLayer "false" init=false (event "evMouseUp"))
 	)
-
-	#(dispatch evChildrenCountChange dir="EventDirection.UP" args="{value: 1}" on='addedToStage')
-	#(dispatch evChildrenCountChange dir="EventDirection.UP" args="{value: -1}" on='removedFromStage')
 
 	(style
 		(width = "100%")
