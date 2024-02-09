@@ -155,11 +155,36 @@
 )
 
 (def element WoWSPaint_ControlElement(_currentColor:number)
+	(scope
+		(var mouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
+		(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
+
+		(event evMouseDown)
+		(event evMouseUp)
+		(event evMouseInactive)
+		(event evStartDrag)
+		(event evStopDrag)
+	)
+
 	(style
 		(position = "absolute")
 		(left = 400)
 		(bottom = 5)
+		(bind alpha "isMouseActive ? 1.0 : 0.4")
 	)
+
+	(dispatch evMouseDown args="{}" on='mouseDown')
+	(dispatch evMouseUp args="{}" on='stageMouseUp')
+	(dispatch evRollOver args="{}" on='rollOver')
+	(dispatch evMouseOut args="{}" on='rollOut')
+
+	(dispatch evMouseInactive (bind enabled "!isMouseActive") (bind trigger "isMouseActive"))
+	(dispatch evStartDrag args="{}" (event "evMouseDown"))
+	(dispatch evStopDrag args="{}" (event "evMouseUp") (event "evMouseInactive"))
+
+	(bindcall startDrag "false" (event "evStartDrag"))
+	(bindcall stopDrag (event "evStopDrag"))
+
 	(block
 		(mc contrast_panel
 			(class $FullsizeAbsolute)
