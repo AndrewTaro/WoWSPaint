@@ -164,12 +164,6 @@
 		(var mouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
 		(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
 
-		(event evMouseDown)
-		(event evMouseUp)
-		(event evMouseInactive)
-		(event evStartDrag)
-		(event evStopDrag)
-
 		(macro STAGE_SIZE)
 		(macro DRAGGABLE_GET_DROP_POSITION _wndName="'WoWSPaint'" _defaults="{positionX: 400, positionY: stageHeight - $globalLayoutBounds[3] - 5}")
 	)
@@ -178,12 +172,11 @@
 		(position = "absolute")
 		(bind left "dragPosX")
 		(bind top "dragPosY")
-		#(bind alpha "isMouseActive ? 1.0 : 0.3")
+		(alpha = "isMouseActive ? 1.0 : 0.3")
 	)
 
 	(controller $Animation
 		(bindcall play
-			#from="{alpha: 1.0}"
 			to	="{alpha: 0.3}"
 			duration=0.15
 			killAll=true
@@ -191,7 +184,6 @@
 			(bind trigger "isMouseActive")
 		)
 		(bindcall play
-			#from="{alpha: 0.3}"
 			to	="{alpha: 1.0}"
 			duration=0.15
 			killAll=true
@@ -199,16 +191,6 @@
 			(bind trigger "isMouseActive")
 		)
 	)
-
-	(dispatch evMouseDown args="{}" on='mouseDown')
-	(dispatch evMouseUp args="{}" on='stageMouseUp')
-
-	(dispatch evMouseInactive (bind enabled "!isMouseActive") (bind trigger "isMouseActive"))
-	(dispatch evStartDrag args="{}" (event "evMouseDown"))
-	(dispatch evStopDrag args="{}" (event "evMouseUp") (event "evMouseInactive"))
-
-	#(bindcall startDrag "false" (event "evStartDrag"))
-	#(bindcall stopDrag (event "evStopDrag"))
 
 	(block
 		#(mc contrast_panel
