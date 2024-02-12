@@ -13,6 +13,10 @@ On the other hand, you also don't like to flush the drawings by mistake while ca
 ![Control Panel](https://github.com/AndrewTaro/WoWSPaint/assets/36262823/98f1e70b-9b8f-48ed-9e97-40a67c0d18a0)
 ![Paint as you like](https://github.com/AndrewTaro/WoWSPaint/assets/36262823/70df7676-651e-4307-a2db-edfce5d8c83d)
 
+# Requirements
+You must install the following for this mod to work:
+- [DraggableUnbound2](../../../DraggableUnbound2)
+
 # Install
 1. Download a zip.
 2. Unzip the archive and you should get `gui`, `PnFMods` folders, and `PnFModsLoader.py`.
