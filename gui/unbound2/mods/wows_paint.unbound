@@ -13,6 +13,7 @@
 	0xFFFFCC66,
 ])
 (def constant WoWSPaint_PALETTE_COLUMN_COUNT "4")
+(def constant WoWSPaint_BRUSH_COLOR_PREF_KEY 'WoWSPaint_brushColorIndex')
 
 (def element WorldOfWarshipsPaint() layout=true
 	(scope
@@ -28,8 +29,6 @@
 		(event evClearButtonClick)
 		(event evCheckMouseBeforeClear)
 
-		(event evChildrenCountChange)
-
 		(var mouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
 		(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
 
@@ -38,8 +37,11 @@
 
 		(var isDrawing:bool = "$event.isDrawing" watch=false init=false (event "evStartDraw") (event "evStopDraw"))
 
-		(var brushColor:number = "SC.Ui_styles.SERVICE_COLORS.WHITE" watch=false)
-		(bind brushColor "$event.color" watch=false (event "evChangeColor"))
+		(var userPrefsComponent:gfx = "$datahub.getSingleComponent(CC.userPrefs)")
+		(var userPrefsNum:dict = "userPrefsComponent.userPrefs.chatBoxWidth" watch=false)
+		(var brushColorIndex:number = "WoWSPaint_BRUSH_COLOR_PREF_KEY in userPrefsNum ? round(userPrefsNum[WoWSPaint_BRUSH_COLOR_PREF_KEY]) : 0" watch=false)
+		(bind brushColorIndex "$event.colorIndex" watch=false (event "evChangeColor"))
+		(var brushColor:number = "brushColorIndex < WoWSPaint_PALETTE_COLORS.length ? WoWSPaint_PALETTE_COLORS[brushColorIndex] : WoWSPaint_PALETTE_COLORS[0]")
 
 		(var isEraser:bool = "brushColor < 0")
 		(var brushSize:number = "isEraser ? 50 : 3")
@@ -49,6 +51,8 @@
 		(bind height "stageHeight")
 		(bind width "stageWidth")
 	)
+
+	(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': $event.colorIndex + 0.00001, 'name': 'chatBoxWidth', 'subName': WoWSPaint_BRUSH_COLOR_PREF_KEY}]" init=false watch=false (event "evChangeColor"))
 
 	(dispatch evMouseInactive (bind enabled "!isMouseActive") (bind trigger "isMouseActive"))
 	(dispatch evStartDraw	dir="EventDirection.DOWN" args="{isDrawing:true, x: $event.x, y: $event.y}" (event "evMouseDown"))
@@ -208,9 +212,6 @@
 			#reset
 			(element WoWSPaint_ResetButtonElement)
 
-			#undo
-			#(element WoWSPaint_BackButtonElement)
-
 			#color palette
 			(element WoWSPaint_ColorPaletteElement _currentColor="_currentColor")
 		)
@@ -262,51 +263,6 @@
 	)
 )
 
-(def element WoWSPaint_BackButtonElement()
-	(scope
-		(event evBackButtonClick)
-		(macro MOUSE_HANDLER_SCOPE)
-
-		(var isDown:bool = "mouseDown")
-		(var isRollover:bool = "rollOver")
-
-		(var ctRollOver:dict = "{ redMultiplier: 1,	greenMultiplier: 1,	blueMultiplier: 1,	alphaMultiplier: 1,
-								  redOffset: 15,	greenOffset: 15,	blueOffset: 15,		alphaOffset: 0 }")
-		(var ctDown:dict = "	{ redMultiplier: 1,	greenMultiplier: 1,	blueMultiplier: 1,	alphaMultiplier: 1,
-								  redOffset: -15,	greenOffset: -15,	blueOffset: -15,	alphaOffset: 0 }")
-	)
-
-	(hblock
-		(style
-			(align = "middle|center")
-		)
-		(tf
-			(text = "'UNDO'")
-			(class $TextDefaultBoldNM)
-			(style
-				(marginRight = 10px)
-			)
-		)
-		(block
-			(style
-				(width = 18)
-				(height = 18)
-				(backgroundImage = "'url:../service_kit/buttons/context/update.png'")
-			)
-		)
-
-		(bind colorTransform "	isRollover && !isDown	? ctRollOver :
-								isDown					? ctDown
-														: CT_NONE")
-
-		(dispatch evBackButtonClick on='click' args="{}" dir="EventDirection.UP")
-		(dispatch evRollOver on='rollOver' args="{}" dir="EventDirection.NONE")
-		(macro MOUSE_HANDLER
-			_soundSet = "'button_context'"
-		)
-	)
-)
-
 (def element WoWSPaint_ColorPaletteElement(_currentColor:number)
 	(scope
 		(var columnCount:number = "4")
@@ -336,17 +292,19 @@
 		)
 		(controller $Repeat renderer='WoWSPaint_ColorTileElement' count="WoWSPaint_PALETTE_COLUMN_COUNT"
 			(args
-				_color="WoWSPaint_PALETTE_COLORS[colorIndexOffset + $index]"
+				_index="colorIndexOffset + $index"
 				_currentColor="_currentColor"
 			)
 		)
 	)
 )
 
-(def element WoWSPaint_ColorTileElement(_color:number, _currentColor:number)
+(def element WoWSPaint_ColorTileElement(_index:number, _currentColor:number)
 	(scope
 		(event evChangeColor)
-		(var colorValue:number = "_color")
+		(var colorIndex:number = "_index")
+		(var colorValue:number = "WoWSPaint_PALETTE_COLORS[colorIndex]")
+		(var isValidColor:number = "colorIndex < WoWSPaint_PALETTE_COLORS.length")
 		(var isSelected:bool = "colorValue == _currentColor")
 
 		(var isEraser:bool = "colorValue < 0")
@@ -355,7 +313,7 @@
 		(var palettePos:number = "paletteSize / 2")
 	)
 
-	(bind visible "_color")
+	(bind visible "isValidColor")
 	
 	(block
 		(style
@@ -420,7 +378,7 @@
 		)
 	)
 
-	(dispatch evChangeColor on='click' args="{color: colorValue}" dir="EventDirection.UP")
+	(dispatch evChangeColor on='click' args="{colorIndex: colorIndex}" dir="EventDirection.UP")
 	(macro MOUSE_HANDLER
 		_soundSet = "'button_context'"
 	)
