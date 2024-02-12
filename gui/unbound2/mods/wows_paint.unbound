@@ -94,6 +94,8 @@
 	(scope
 		(event evPositionUpdate)
 		(var mouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
+		(var stage:gfx = "$datahub.getSingleComponent(CC.stage)")
+		(var scale:number = "stage.scale" (event "stage.evStageSizeChanged"))
 		(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
 		(var isSmall:bool = "_size < 5 ? true : false")
 	)
@@ -105,8 +107,8 @@
 	(style
 		(position = "absolute")
 		(hitTest = false)
-		(bind left "mouse.x" (event "evPositionUpdate"))
-		(bind top "mouse.y" (event "evPositionUpdate"))
+		(bind left "round(mouse.x / scale)" (event "evPositionUpdate"))
+		(bind top "round(mouse.y / scale)" (event "evPositionUpdate"))
 	)
 
 	(controller $Sector
@@ -125,6 +127,9 @@
 		(event evClearDraw)
 		(event evMouseMove)
 		(event evMouseUp)
+
+		(var stage:gfx = "$datahub.getSingleComponent(CC.stage)")
+		(var scale:number = "stage.scale" (event "stage.evStageSizeChanged"))
 
 		# Drawing starts as soon as element initialization completes
 		# So color and isEraser should not change during that phase.
@@ -146,8 +151,8 @@
 
 	(.graphics
 		(bindcall lineStyle "brushSize" "_currentColor" (bind enabled "isActiveLayer") (event "evStartDraw"))
-		(bindcall moveTo "$event.x" "$event.y" (bind enabled "isActiveLayer") (event "evStartDraw"))
-		(bindcall lineTo "$event.x" "$event.y" (bind enabled "isActiveLayer") (event "evMouseMove"))
+		(bindcall moveTo "round($event.x / scale)" "round($event.y / scale)" (bind enabled "isActiveLayer") (event "evStartDraw"))
+		(bindcall lineTo "round($event.x / scale)" "round($event.y / scale)" (bind enabled "isActiveLayer") (event "evMouseMove"))
 		(bindcall clear (event "evClearDraw"))
 	)
 	(blendMode = "isEraser ? 'subtract' : 'layer'")
@@ -164,13 +169,35 @@
 		(event evMouseInactive)
 		(event evStartDrag)
 		(event evStopDrag)
+
+		(macro STAGE_SIZE)
+		(macro DRAGGABLE_GET_DROP_POSITION _wndName="'WoWSPaint'" _defaults="{positionX: 400, positionY: stageHeight - $globalLayoutBounds[3] - 5}")
 	)
 
 	(style
 		(position = "absolute")
-		(left = 400)
-		(bottom = 5)
-		(bind alpha "isMouseActive ? 1.0 : 0.4")
+		(bind left "dragPosX")
+		(bind top "dragPosY")
+		#(bind alpha "isMouseActive ? 1.0 : 0.3")
+	)
+
+	(controller $Animation
+		(bindcall play
+			#from="{alpha: 1.0}"
+			to	="{alpha: 0.3}"
+			duration=0.15
+			killAll=true
+			(bind enabled "!isMouseActive")
+			(bind trigger "isMouseActive")
+		)
+		(bindcall play
+			#from="{alpha: 0.3}"
+			to	="{alpha: 1.0}"
+			duration=0.15
+			killAll=true
+			(bind enabled "isMouseActive")
+			(bind trigger "isMouseActive")
+		)
 	)
 
 	(dispatch evMouseDown args="{}" on='mouseDown')
@@ -180,13 +207,14 @@
 	(dispatch evStartDrag args="{}" (event "evMouseDown"))
 	(dispatch evStopDrag args="{}" (event "evMouseUp") (event "evMouseInactive"))
 
-	(bindcall startDrag "false" (event "evStartDrag"))
-	(bindcall stopDrag (event "evStopDrag"))
+	#(bindcall startDrag "false" (event "evStartDrag"))
+	#(bindcall stopDrag (event "evStopDrag"))
 
 	(block
-		(mc contrast_panel
-			(class $FullsizeAbsolute)
-		)
+		#(mc contrast_panel
+		#	(class $FullsizeAbsolute)
+		#)
+		(element ModDraggableElement _wndName="'WoWSPaint'" _defaults="{positionX: 400, positionY: stageHeight - $globalLayoutBounds[3] - 5}")
 		(vtile
 			(style
 				(hitTest = true)
