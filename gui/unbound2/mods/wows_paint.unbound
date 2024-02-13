@@ -169,7 +169,8 @@
 		(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
 
 		(macro STAGE_SIZE)
-		(macro DRAGGABLE_GET_DROP_POSITION _wndName="'WoWSPaint'" _defaults="{positionX: 400, positionY: stageHeight - $globalLayoutBounds[3] - 5}")
+		(var defaultPos:dict = "{positionX: 400, positionY: stageHeight - 155}")
+		(macro DRAGGABLE_GET_DROP_POSITION _wndName="'WoWSPaint'" _defaults="defaultPos")
 	)
 
 	(style
@@ -200,7 +201,7 @@
 		#(mc contrast_panel
 		#	(class $FullsizeAbsolute)
 		#)
-		(element ModDraggableElement _wndName="'WoWSPaint'" _defaults="{positionX: 400, positionY: stageHeight - $globalLayoutBounds[3] - 5}")
+		(element ModDraggableElement _wndName="'WoWSPaint'" _defaults="defaultPos")
 		(vtile
 			(style
 				(hitTest = true)
