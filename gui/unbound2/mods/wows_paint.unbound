@@ -312,6 +312,8 @@
 
 		(var paletteSize:number = "29")
 		(var palettePos:number = "paletteSize / 2")
+
+		(macro MOUSE_HANDLER_SCOPE)
 	)
 
 	(bind visible "isValidColor")
@@ -381,6 +383,6 @@
 
 	(dispatch evChangeColor on='click' args="{colorIndex: colorIndex}" dir="EventDirection.UP")
 	(macro MOUSE_HANDLER
-		_soundSet = "'button_context'"
+		_soundSet = "'button_secondary'"
 	)
 )
