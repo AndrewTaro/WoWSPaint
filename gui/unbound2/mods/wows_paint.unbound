@@ -202,7 +202,7 @@
 		#	(class $FullsizeAbsolute)
 		#)
 		(element ModDraggableElement _wndName="'WoWSPaint'" _defaults="defaultPos")
-		(vtile
+		(block
 			(style
 				(hitTest = true)
 				(vgap = 10px)
@@ -259,7 +259,7 @@
 		(dispatch evClearButtonClick on='click' args="{}" dir="EventDirection.UP")
 		(dispatch evRollOver on='rollOver' args="{}" dir="EventDirection.NONE")
 		(macro MOUSE_HANDLER
-			_soundSet = "'button_context'"
+			_soundSet = "'button_tab'"
 		)
 	)
 )
