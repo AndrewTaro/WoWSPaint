@@ -18,6 +18,7 @@
 (def element WorldOfWarshipsPaint() layout=true
 	(scope
 		(macro STAGE_SIZE)
+		(event evStageMouseMove)
 		(event evMouseDown)
 		(event evMouseMove)
 		(event evMouseUp)
@@ -35,7 +36,8 @@
 		(var playerAvatar:gfx = "$datahub.getSingleComponent(CC.playerAvatar)")
 		(var isPlayer:bool = "playerAvatar")
 
-		(var isDrawing:bool = "$event.isDrawing" watch=false init=false (event "evStartDraw") (event "evStopDraw"))
+		(var isDrawing:bool = "false" watch=false)
+		(bind isDrawing "$event.isDrawing" watch=false init=false (event "evStartDraw") (event "evStopDraw"))
 
 		(var userPrefsComponent:gfx = "$datahub.getSingleComponent(CC.userPrefs)")
 		(var userPrefsNum:dict = "userPrefsComponent.userPrefs.chatBoxWidth" watch=false)
@@ -74,7 +76,8 @@
 		#(dispatch evMouseDown args="{x: $event.stageX, y: $event.stageY}" on='mouseDown') #requires hitTest=true and backgroundColor
 		(dispatch evMouseDown args="{x: $event.stageX, y: $event.stageY}" on='stageMouseDown')
 		(dispatch evMouseUp dir="EventDirection.DOWN"  args="{}" on='stageMouseUp')
-		(dispatch evMouseMove dir="EventDirection.DOWN" on='stageMouseMove' args="{x: $event.stageX, y: $event.stageY}" (bind enabled "isDrawing"))
+		(dispatch evStageMouseMove args="{x: $event.stageX, y: $event.stageY}" on='stageMouseMove')
+		(dispatch evMouseMove dir="EventDirection.DOWN" (bind enabled "isDrawing") (event "evStageMouseMove"))
 
 		(controller $Repeat renderer='WoWSPaint_LayerElement'
 			(bind count "0" watch=false (event "evClearDraw"))
@@ -257,7 +260,6 @@
 														: CT_NONE")
 
 		(dispatch evClearButtonClick on='click' args="{}" dir="EventDirection.UP")
-		(dispatch evRollOver on='rollOver' args="{}" dir="EventDirection.NONE")
 		(macro MOUSE_HANDLER
 			_soundSet = "'button_tab'"
 		)
