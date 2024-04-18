@@ -40,7 +40,7 @@
 		(var userPrefsComponent:gfx = "$datahub.getSingleComponent(CC.userPrefs)")
 		(var userPrefsNum:dict = "userPrefsComponent.userPrefs.chatBoxWidth" watch=false)
 		(var brushColorIndex:number = "WoWSPaint_BRUSH_COLOR_PREF_KEY in userPrefsNum ? round(userPrefsNum[WoWSPaint_BRUSH_COLOR_PREF_KEY]) : 0" watch=false)
-		(bind brushColorIndex "$event.colorIndex" watch=false (event "evChangeColor"))
+		(bind brushColorIndex "$event.colorIndex" watch=false init=false (event "evChangeColor"))
 		(var brushColor:number = "brushColorIndex < WoWSPaint_PALETTE_COLORS.length ? WoWSPaint_PALETTE_COLORS[brushColorIndex] : WoWSPaint_PALETTE_COLORS[0]")
 
 		(var isEraser:bool = "brushColor < 0")
