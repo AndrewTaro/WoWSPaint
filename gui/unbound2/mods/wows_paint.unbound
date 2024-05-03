@@ -80,13 +80,14 @@
 		(dispatch evMouseMove dir="EventDirection.DOWN" (bind enabled "isDrawing") (event "evStageMouseMove"))
 
 		(controller $Repeat renderer='WoWSPaint_LayerElement'
-			(bind count "0" watch=false (event "evClearDraw"))
+			#(bind count "0" watch=false (event "evClearDraw"))
 			# Destroy all the layers so they don't remain.
 			# Apparently, addChildAt can handle the element addition without binding count.
 			(args
 				_currentColor="brushColor"
 			)
 			(bindcall addChildAt "0" (event "evStartDraw"))
+			(bindcall removeChildren (event "evClearDraw"))
 		)
 		(blendMode = 'layer')
 	)
