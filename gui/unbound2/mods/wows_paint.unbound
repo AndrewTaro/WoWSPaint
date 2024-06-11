@@ -56,12 +56,12 @@
 
 	(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': $event.colorIndex + 0.00001, 'name': 'chatBoxWidth', 'subName': WoWSPaint_BRUSH_COLOR_PREF_KEY}]" init=false watch=false (event "evChangeColor"))
 
-	(dispatch evMouseInactive (bind enabled "!isMouseActive") (bind trigger "isMouseActive"))
-	(dispatch evStartDraw	dir="EventDirection.DOWN" args="{isDrawing:true, x: $event.x, y: $event.y}" (event "evMouseDown"))
-	(dispatch evStopDraw	dir="EventDirection.DOWN" args="{isDrawing:false}" (event "evMouseUp") (event "evMouseInactive"))
-	(dispatch evClearDraw	dir="EventDirection.DOWN" args="{}" (event "evClearButtonClick"))
-	(dispatch evCheckMouseBeforeClear args="{}" delay=2 (bind enabled "isPlayer") (event "evMouseInactive"))
-	(dispatch evClearDraw args="{}" dir="EventDirection.DOWN" (bind enabled "!isMouseActive") (event "evCheckMouseBeforeClear"))
+	(dispatch evMouseInactive	watch=false init=false  (bind enabled "!isMouseActive") (bind trigger "isMouseActive"))
+	(dispatch evStartDraw		watch=false init=false dir="EventDirection.DOWN" args="{isDrawing:true, x: $event.x, y: $event.y}" (event "evMouseDown"))
+	(dispatch evStopDraw		watch=false init=false dir="EventDirection.DOWN" args="{isDrawing:false}" (event "evMouseUp") (event "evMouseInactive"))
+	(dispatch evClearDraw		watch=false init=false dir="EventDirection.DOWN" args="{}" (event "evClearButtonClick"))
+	(dispatch evCheckMouseBeforeClear watch=false init=false args="{}" delay=2 (bind enabled "isPlayer") (event "evMouseInactive"))
+	(dispatch evClearDraw 		watch=false init=false args="{}" dir="EventDirection.DOWN" (bind enabled "!isMouseActive") (event "evCheckMouseBeforeClear"))
 
 	#canvas
 	(block
@@ -74,20 +74,22 @@
 		)
 
 		#(dispatch evMouseDown args="{x: $event.stageX, y: $event.stageY}" on='mouseDown') #requires hitTest=true and backgroundColor
-		(dispatch evMouseDown args="{x: $event.stageX, y: $event.stageY}" on='stageMouseDown')
-		(dispatch evMouseUp dir="EventDirection.DOWN"  args="{}" on='stageMouseUp')
-		(dispatch evStageMouseMove args="{x: $event.stageX, y: $event.stageY}" on='stageMouseMove')
-		(dispatch evMouseMove dir="EventDirection.DOWN" (bind enabled "isDrawing") (event "evStageMouseMove"))
+		(dispatch evMouseDown	watch=false init=false args="{x: $event.stageX, y: $event.stageY}" on='stageMouseDown')
+		(dispatch evMouseUp 	watch=false init=false dir="EventDirection.DOWN"  args="{}" on='stageMouseUp')
+		# (dispatch evStageMouseMove args="{x: $event.stageX, y: $event.stageY}" on='stageMouseMove')
+		# (dispatch evMouseMove dir="EventDirection.DOWN" (bind enabled "isDrawing") (event "evStageMouseMove"))
+		(dispatch evMouseMove 	watch=false init=false dir="EventDirection.DOWN" args="{x: mouse.x, y: mouse.y}" (bind enabled "isDrawing") (event "evEnterFrame"))
 
 		(controller $Repeat renderer='WoWSPaint_LayerElement'
-			(bind count "0" watch=false (event "evClearDraw"))
+			#(bind count "0" watch=false (event "evClearDraw"))
 			# Destroy all the layers so they don't remain.
 			# Apparently, addChildAt can handle the element addition without binding count.
 			(args
 				_currentColor="brushColor"
 			)
-			(bindcall addChildAt "0" (event "evStartDraw"))
+			(bindcall addChildAt "0" watch=false init=false (event "evStartDraw"))
 		)
+		(bindcall removeChildren watch=false init=false  (event "evClearDraw"))
 		(blendMode = 'layer')
 	)
 	#controls
@@ -157,10 +159,10 @@
 	)
 
 	(.graphics
-		(bindcall lineStyle "brushSize" "_currentColor" (bind enabled "isActiveLayer") (event "evStartDraw"))
-		(bindcall moveTo "round($event.x / scale)" "round($event.y / scale)" (bind enabled "isActiveLayer") (event "evStartDraw"))
-		(bindcall lineTo "round($event.x / scale)" "round($event.y / scale)" (bind enabled "isActiveLayer") (event "evMouseMove"))
-		(bindcall clear (event "evClearDraw"))
+		(bindcall lineStyle "brushSize" "_currentColor" watch=false init=false (bind enabled "isActiveLayer") (event "evStartDraw"))
+		(bindcall moveTo "round($event.x / scale)" "round($event.y / scale)" watch=false init=false (bind enabled "isActiveLayer") (event "evStartDraw"))
+		(bindcall lineTo "round($event.x / scale)" "round($event.y / scale)" watch=false init=false (bind enabled "isActiveLayer") (event "evMouseMove"))
+		(bindcall clear watch=false init=false (event "evClearDraw"))
 	)
 	(blendMode = "isEraser ? 'subtract' : 'layer'")
 	# Do not use BlendMode.ERASE since it literally erases everything, including the layers above it.
