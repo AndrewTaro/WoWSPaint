@@ -22,6 +22,7 @@
 		(event evMouseDown)
 		(event evMouseMove)
 		(event evMouseUp)
+		(event evMouseActive)
 		(event evMouseInactive)
 		(event evStartDraw)
 		(event evStopDraw)
@@ -56,7 +57,8 @@
 
 	(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': $event.colorIndex + 0.00001, 'name': 'chatBoxWidth', 'subName': WoWSPaint_BRUSH_COLOR_PREF_KEY}]" init=false watch=false (event "evChangeColor"))
 
-	(dispatch evMouseInactive	watch=false init=false  (bind enabled "!isMouseActive") (bind trigger "isMouseActive"))
+	(dispatch evMouseActive 	watch=false init=false args="{}" (bind enabled "isMouseActive")  (bind trigger "isMouseActive"))
+	(dispatch evMouseInactive	watch=false init=false args="{}" (bind enabled "!isMouseActive") (bind trigger "isMouseActive"))
 	(dispatch evStartDraw		watch=false init=false dir="EventDirection.DOWN" args="{isDrawing:true, x: $event.x, y: $event.y}" (event "evMouseDown"))
 	(dispatch evStopDraw		watch=false init=false dir="EventDirection.DOWN" args="{isDrawing:false}" (event "evMouseUp") (event "evMouseInactive"))
 	(dispatch evClearDraw		watch=false init=false dir="EventDirection.DOWN" args="{}" (event "evClearButtonClick"))
@@ -95,29 +97,28 @@
 	#controls
 	(element WoWSPaint_ControlElement _currentColor="brushColor")
 
-	#brush
-	(element WoWSPaint_BrushElement _currentColor="brushColor" _size="brushSize")
+	# Brush
+	# (element WoWSPaint_BrushElement _currentColor="brushColor" _size="brushSize")
+
+	# Experiment: this solves the perf issue?
+	(controller $Tooltip (renderer = 'WoWSPaint_BrushElement')
+		(args _currentColor="brushColor" _size="brushSize")
+		#(align="center|middle")
+		(position="trackMouse")
+		(offset=[0,0])
+		(screenBoundsOffset={left:0, top:0, right:0, bottom:0})
+		(bindcall show animation={duration:0.15, from:{alpha:0}, to:{alpha:1}} (event "evMouseActive"))
+		(bindcall hide animation={duration:0.15, from:{alpha:0}, to:{alpha:1}} (event "evMouseInactive"))
+	)
 )
 
 (def element WoWSPaint_BrushElement(_currentColor:number, _size:number)
 	(scope
-		(event evPositionUpdate)
-		(var mouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
-		(var stage:gfx = "$datahub.getSingleComponent(CC.stage)")
-		(var scale:number = "stage.scale" (event "stage.evStageSizeChanged"))
-		(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
 		(var isSmall:bool = "_size < 5 ? true : false")
 	)
 
-	(bind visible "isMouseActive")
-	
-	(dispatch evPositionUpdate args={} (bind enabled "isMouseActive") (event "evEnterFrame"))
-
 	(style
-		(position = "absolute")
 		(hitTest = false)
-		(bind left "round(mouse.x / scale)" (event "evPositionUpdate"))
-		(bind top "round(mouse.y / scale)" (event "evPositionUpdate"))
 	)
 
 	(controller $Sector
