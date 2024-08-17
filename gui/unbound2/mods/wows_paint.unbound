@@ -14,6 +14,7 @@
 ])
 (def constant WoWSPaint_PALETTE_COLUMN_COUNT "4")
 (def constant WoWSPaint_BRUSH_COLOR_PREF_KEY 'WoWSPaint_brushColorIndex')
+(def constant WoWSPaint_PALETTE_EXPAND_PREF_KEY 'WoWSPaint_paletteExpand')
 
 (def element WorldOfWarshipsPaint() layout=true
 	(scope
@@ -177,7 +178,13 @@
 		(macro STAGE_SIZE)
 		(var defaultPos:dict = "{positionX: 400, positionY: stageHeight - 155}")
 		(macro DRAGGABLE_GET_DROP_POSITION _wndName="'WoWSPaint'" _defaults="defaultPos")
+
+		(event evExpandButtonClick)
+		(var isPaletteVisible:bool = "true")
+		(bind isPaletteVisible "$event.value" init=false watch=false (event "evExpandButtonClick"))
 	)
+
+	(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': toNumber($event.value) + 0.00001, 'name': 'chatBoxWidth', 'subName': WoWSPaint_PALETTE_EXPAND_PREF_KEY}]" init=false watch=false (event "evExpandButtonClick"))
 
 	(style
 		(position = "absolute")
@@ -215,13 +222,79 @@
 				(align = "middle|center")
 				(padding = 10px)
 			)
-	
-			#reset
-			(element WoWSPaint_ResetButtonElement)
 
-			#color palette
-			(element WoWSPaint_ColorPaletteElement _currentColor="_currentColor")
+			(block
+				(style
+					(flow = "Flow.HORIZONTAL")
+					(align = "middle|center")
+				)
+				# expander
+				(element WoWSPaint_ExpandButtonElement)
+		
+				# reset
+				(element WoWSPaint_ResetButtonElement)
+			)
+
+			# color palette
+			(element WoWSPaint_ColorPaletteElement _currentColor="_currentColor"
+				(bind visible "isPaletteVisible")
+			)
 		)
+	)
+)
+
+(def element WoWSPaint_ExpandButtonElement()
+	(scope
+		(event evExpandButtonClick)
+		(macro MOUSE_HANDLER_SCOPE)
+
+		(var isDown:bool = "mouseDown")
+		(var isRollover:bool = "rollOver")
+
+		(var ctRollOver:dict = "{ redMultiplier: 1,	greenMultiplier: 1,	blueMultiplier: 1,	alphaMultiplier: 1,
+								  redOffset: 15,	greenOffset: 15,	blueOffset: 15,		alphaOffset: 0 }")
+		(var ctDown:dict = "	{ redMultiplier: 1,	greenMultiplier: 1,	blueMultiplier: 1,	alphaMultiplier: 1,
+								  redOffset: -15,	greenOffset: -15,	blueOffset: -15,	alphaOffset: 0 }")
+
+		(var userPrefsComponent:gfx = "$datahub.getSingleComponent(CC.userPrefs)")
+		(var userPrefsNum:dict = "userPrefsComponent.userPrefs.chatBoxWidth" watch=false)
+		(var isPaletteVisible:bool = "WoWSPaint_PALETTE_EXPAND_PREF_KEY in userPrefsNum ? round(userPrefsNum[WoWSPaint_PALETTE_EXPAND_PREF_KEY]) : true" watch=false)
+		(bind isPaletteVisible "$event.value" init=false watch=false (event "evExpandButtonClick"))
+		(var targetRotation:number = "isPaletteVisible ? 90 : 0")
+	)
+
+	(block
+		(style
+			(width = 18)
+			(height = 18)
+			(align = "middle|center")
+			(marginRight = 3px)
+		)
+		(block
+			(style
+				(backgroundSize = "autosize")
+				(backgroundImage = "'url:../service_kit/buttons/expand_over.png'")
+				(pivotX = 50%)
+				(pivotY = 50%)
+				(left = 0%)
+				(right = 0%)
+				(rotation = "targetRotation")
+			)
+			(controller $Animation
+				(bindcall play	duration=0.15	to="{rotation: targetRotation}"	(bind trigger "targetRotation"))
+			)
+		)
+
+		(dispatch evExpandButtonClick watch=false init=false dir="EventDirection.UP" args="{value: !isPaletteVisible}" on='click')
+		(dispatch evExpandButtonClick watch=false init=false dir="EventDirection.UP" args="{value: isPaletteVisible}" on='addedToStage')
+			
+		(macro MOUSE_HANDLER
+			_soundSet = "'button_tab'"
+		)
+
+		(bind colorTransform "	isRollover && !isDown	? ctRollOver :
+								isDown					? ctDown
+														: CT_NONE")
 	)
 )
 
@@ -247,7 +320,8 @@
 			(text = "'CLEAR CANVAS'")
 			(class $TextDefaultBoldNM)
 			(style
-				(marginRight = 10px)
+				(marginRight = 5px)
+				(leading = -6)
 			)
 		)
 		(block
