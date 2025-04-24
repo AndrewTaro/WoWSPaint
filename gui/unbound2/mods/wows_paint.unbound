@@ -177,7 +177,7 @@
 
 		(macro STAGE_SIZE)
 		(var defaultPos:dict = "{positionX: 400, positionY: stageHeight - 155}")
-		(macro DRAGGABLE_GET_DROP_POSITION _wndName="'WoWSPaint'" _defaults="defaultPos")
+		(macro DRAGGABLE_GET_DROP_POSITION _elementName="'WoWSPaint'" _defaultPosition="defaultPos")
 
 		(event evExpandButtonClick)
 		(var isPaletteVisible:bool = "true")
@@ -214,7 +214,7 @@
 		#(mc contrast_panel
 		#	(class $FullsizeAbsolute)
 		#)
-		(element ModDraggableElement _wndName="'WoWSPaint'" _defaults="defaultPos")
+		(element ModDraggableElement _elementName="'WoWSPaint'" _defaultPosition="defaultPos")
 		(block
 			(style
 				(hitTest = true)
