@@ -49,16 +49,12 @@
 
 		(var isEraser:bool = "brushColor < 0")
 		(var brushSize:number = "isEraser ? 50 : 3")
-
-		(macro IS_SPECTATOR_MODE)
 	)
 
 	(style
 		(bind height "stageHeight")
 		(bind width "stageWidth")
 	)
-
-	(bind visible "!isSpectatorTrainingMode ")
 
 	(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': $event.colorIndex + 0.00001, 'name': 'chatBoxWidth', 'subName': WoWSPaint_BRUSH_COLOR_PREF_KEY}]" init=false watch=false (event "evChangeColor"))
 
