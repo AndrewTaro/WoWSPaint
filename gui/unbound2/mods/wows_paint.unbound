@@ -104,7 +104,7 @@
 		(args _currentColor="brushColor" _size="brushSize")
 		(position="trackMouse")
 		(offset=[0,0])
-		(screenBoundsOffset={left:-10, top:-10, right:-10, bottom:-10})
+		(screenBoundsOffset={left:-100, top:-100, right:-100, bottom:-100})
 		(bindcall show animation={duration:0.15, from:{alpha:0}, to:{alpha:1}} (event "evMouseActive"))
 		(bindcall hide animation={duration:0.15, from:{alpha:1}, to:{alpha:0}} (event "evMouseInactive"))
 	)
