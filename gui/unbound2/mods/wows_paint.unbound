@@ -1,18 +1,13 @@
-(def constant WoWSPaint_PALETTE_COLORS [
-	-1,
-	0xFFFF0000,
-	0xFF00FF00,
-	0xFF0000FF,
-	0xFFFFFFFF,
-	0xFFFF6600,
-	0xFF4CE8AA,
-	0xFF13C9F7
-])
+# Slot 0 is the eraser and is NOT a pref -- it is a brush MODE (it selects BlendMode.subtract
+# downstream), not a colour the user can pick. Slots 1..7 come from wowsPaint.palette.color1..7.
+# Detect it by EQUALITY with this sentinel, never by sign: the palette now carries packed
+# 0xAARRGGBB values above 2^31, so a `< 0` test would depend on the bridge never handing one
+# back signed.
+(def constant WoWSPaint_ERASER_COLOR "-1")
 (def constant WoWSPaint_PALETTE_COLUMN_COUNT "4")
 (def constant WoWSPaint_PALETTE_SIZE "28px")
 (def constant WoWSPaint_PALETTE_GAP "3px")
-(def constant WoWSPaint_BRUSH_COLOR_PREF_KEY 'WoWSPaint_brushColorIndex')
-(def constant WoWSPaint_PALETTE_EXPAND_PREF_KEY 'WoWSPaint_paletteExpand')
+(def constant WoWSPaint_POSITION_KEY 'wowsPaint.position')
 
 (def element WorldOfWarshipsPaint() layout=true
 	(scope
@@ -39,13 +34,35 @@
 		(var isDrawing:bool = "false" watch=false)
 		(bind isDrawing "$event.isDrawing" watch=false init=false (event "evStartDraw") (event "evStopDraw"))
 
-		(var userPrefsComponent:gfx = "$datahub.getSingleComponent(CC.userPrefs)")
-		(var userPrefsNum:dict = "userPrefsComponent.userPrefs.chatBoxWidth" watch=false)
-		(var brushColorIndex:number = "WoWSPaint_BRUSH_COLOR_PREF_KEY in userPrefsNum ? round(userPrefsNum[WoWSPaint_BRUSH_COLOR_PREF_KEY]) : 0" watch=false)
-		(bind brushColorIndex "$event.colorIndex" watch=false init=false (event "evChangeColor"))
-		(var brushColor:number = "brushColorIndex < WoWSPaint_PALETTE_COLORS.length ? WoWSPaint_PALETTE_COLORS[brushColorIndex] : WoWSPaint_PALETTE_COLORS[0]")
+		# Palette is built ONCE here and threaded down as _palette -- reading the seven colour prefs
+		# in the tile renderer instead would stand up 7 watcher chains per tile across 8 tiles.
+		# Reactive on purpose (no watch=false): editing a colour in the config panel repaints live.
+		(macro TT_GET_PREF _varName="'color1'" _key="'wowsPaint.palette.color1'")
+		(macro TT_GET_PREF _varName="'color2'" _key="'wowsPaint.palette.color2'")
+		(macro TT_GET_PREF _varName="'color3'" _key="'wowsPaint.palette.color3'")
+		(macro TT_GET_PREF _varName="'color4'" _key="'wowsPaint.palette.color4'")
+		(macro TT_GET_PREF _varName="'color5'" _key="'wowsPaint.palette.color5'")
+		(macro TT_GET_PREF _varName="'color6'" _key="'wowsPaint.palette.color6'")
+		(macro TT_GET_PREF _varName="'color7'" _key="'wowsPaint.palette.color7'")
+		(var palette:array = "[
+			WoWSPaint_ERASER_COLOR,
+			null != color1 && null != color1.value ? color1.value : 0,
+			null != color2 && null != color2.value ? color2.value : 0,
+			null != color3 && null != color3.value ? color3.value : 0,
+			null != color4 && null != color4.value ? color4.value : 0,
+			null != color5 && null != color5.value ? color5.value : 0,
+			null != color6 && null != color6.value ? color6.value : 0,
+			null != color7 && null != color7.value ? color7.value : 0
+		]")
 
-		(var isEraser:bool = "brushColor < 0")
+		# Runtime state, not a user-facing setting (the schema marks it hidden): seed once from the
+		# store, then the click event owns it -- hence watch=false, as in the pre-rewrite view.
+		(macro TT_GET_PREF _varName="'brushIndexPref'" _key="'wowsPaint.brushColorIndex'")
+		(var brushColorIndex:number = "null != brushIndexPref && null != brushIndexPref.value ? round(brushIndexPref.value) : 0" watch=false)
+		(bind brushColorIndex "$event.colorIndex" watch=false init=false (event "evChangeColor"))
+		(var brushColor:number = "brushColorIndex < palette.length ? palette[brushColorIndex] : palette[0]")
+
+		(var isEraser:bool = "brushColor == WoWSPaint_ERASER_COLOR")
 		(var brushSize:number = "isEraser ? 50 : 3")
 	)
 
@@ -54,7 +71,7 @@
 		(bind width "stageWidth")
 	)
 
-	(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': $event.colorIndex + 0.00001, 'name': 'chatBoxWidth', 'subName': WoWSPaint_BRUSH_COLOR_PREF_KEY}]" init=false watch=false (event "evChangeColor"))
+	(bindcall externalCall 'direct.action' "['mod.setPref', ['wowsPaint.brushColorIndex', $event.colorIndex]]" init=false watch=false (event "evChangeColor"))
 
 	(dispatch evMouseActive 	watch=false init=false args="{}" (bind enabled "isMouseActive")  (bind trigger "isMouseActive"))
 	(dispatch evMouseInactive	watch=false init=false args="{}" (bind enabled "!isMouseActive") (bind trigger "isMouseActive"))
@@ -94,7 +111,7 @@
 		(blendMode = 'layer')
 	)
 	#controls
-	(element WoWSPaint_ControlElement _currentColor="brushColor")
+	(element WoWSPaint_ControlElement _currentColor="brushColor" _palette="palette")
 
 	# Brush
 	# (element WoWSPaint_BrushElement _currentColor="brushColor" _size="brushSize")
@@ -141,7 +158,7 @@
 
 		# Drawing starts as soon as element initialization completes
 		# So color and isEraser should not change during that phase.
-		(var isEraser:bool = "_currentColor < 0" watch=false)
+		(var isEraser:bool = "_currentColor == WoWSPaint_ERASER_COLOR" watch=false)
 		(var brushSize:number = "isEraser ? 50 : 3")
 
 		# Layer becomes Active by default when entering the stage.
@@ -167,26 +184,34 @@
 	# Do not use BlendMode.ERASE since it literally erases everything, including the layers above it.
 )
 
-(def element WoWSPaint_ControlElement(_currentColor:number)
+(def element WoWSPaint_ControlElement(_currentColor:number, _palette:array)
 	(scope
 		(var mouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
 		(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
 
-		(macro STAGE_SIZE)
-		(var defaultPos:dict = "{positionX: 400, positionY: stageHeight - 155}")
-		(macro DRAGGABLE_GET_DROP_POSITION _elementName="'WoWSPaint'" _defaultPosition="defaultPos")
+		# Python owns the position value AND the first-placement default (CMS anchor/offset), so the
+		# old view-side defaultPos + stageHeight math is gone.
+		(macro TT_DRAGGABLE_POSITION _fullKey="WoWSPaint_POSITION_KEY")
+		(macro TT_GET_PREF _varName="'lockPref'" _key="'wowsPaint.disableDragdrop'")
+		(var isPositionLocked:bool = "null != lockPref && null != lockPref.value ? lockPref.value : false")
+
+		(var camera:gfx = "$datahub.getSingleComponent(CC.camera)")
+		(var altVision:bool = "null != camera ? camera.altVision : false" (event "camera.evAltVisionChanged"))
 
 		(event evExpandButtonClick)
-		(var isPaletteVisible:bool = "true")
-		(bind isPaletteVisible "$event.value" init=false watch=false (event "evExpandButtonClick"))
+		(macro TT_GET_PREF _varName="'paletteModePref'" _key="'wowsPaint.paletteDisplayMode'")
+		(var paletteMode:number = "null != paletteModePref && null != paletteModePref.value ? paletteModePref.value : TT_CONST.DISPLAY_MODE.ENABLED")
+		(var isPaletteVisible:bool = "paletteMode == TT_CONST.DISPLAY_MODE.ADAPTIVE ? altVision : paletteMode")
 	)
 
-	(bindcall externalCall 'inputMapping.onAction' "['setUserPref', {'value': toNumber($event.value) + 0.00001, 'name': 'chatBoxWidth', 'subName': WoWSPaint_PALETTE_EXPAND_PREF_KEY}]" init=false watch=false (event "evExpandButtonClick"))
+	# The HUD chevron writes the resolved 0/1 -- an explicit click leaves ADAPTIVE rather than
+	# toggling within it, which is the only reading that keeps one click = one visible change.
+	(bindcall externalCall 'direct.action' "['mod.setPref', ['wowsPaint.paletteDisplayMode', $event.value ? TT_CONST.DISPLAY_MODE.ENABLED : TT_CONST.DISPLAY_MODE.DISABLED]]" init=false watch=false (event "evExpandButtonClick"))
 
 	(style
 		(position = "absolute")
-		(bind left "dragPosX")
-		(bind top "dragPosY")
+		(bind left "dragX")
+		(bind top "dragY")
 		(alpha = "isMouseActive ? 1.0 : 0.3")
 	)
 
@@ -208,10 +233,18 @@
 	)
 
 	(block
-		#(mc contrast_panel
-		#	(class $FullsizeAbsolute)
-		#)
-		(element ModDraggableElement _elementName="'WoWSPaint'" _defaultPosition="defaultPos")
+		# Full-size transparent drag surface. MUST stay declared before the content block below --
+		# that document order is what keeps TT_DRAGGABLE's signifier behind the controls.
+		# hitTest follows the lock: the macro gates the writes and the signifier, but only dropping
+		# hitTest here also suppresses the drag-hint tooltip.
+		(block
+			(class $FullsizeAbsolute)
+			# 0x00FFFFFF, not 0x01000000: alpha-0x00 still registers hits, while 0x01000000 renders a
+			# visible dark tint over the whole element.
+			(style (backgroundColor = 0x00FFFFFF))
+			(bind hitTest "!isPositionLocked")
+			(macro TT_DRAGGABLE _fullKey="WoWSPaint_POSITION_KEY" _isDragEnabled="!isPositionLocked")
+		)
 		(block
 			(style
 				(hitTest = true)
@@ -224,7 +257,7 @@
 					(align = "middle|center")
 				)
 				# expander
-				(element WoWSPaint_ExpandButtonElement)
+				(element WoWSPaint_ExpandButtonElement _isPaletteVisible="isPaletteVisible")
 
 				(tf
 					(class $TextDefaultBoldNM)
@@ -244,14 +277,14 @@
 			(block
 				(controller $Instance renderer='WoWSPaint_ColorPaletteElement'
 					(bind enabled "isPaletteVisible")
-					(args _currentColor="_currentColor")
+					(args _currentColor="_currentColor" _palette="_palette")
 				)
 			)
 		)
 	)
 )
 
-(def element WoWSPaint_ExpandButtonElement()
+(def element WoWSPaint_ExpandButtonElement(_isPaletteVisible:bool)
 	(scope
 		(event evExpandButtonClick)
 		(macro MOUSE_HANDLER_SCOPE)
@@ -264,11 +297,9 @@
 		(var ctDown:dict = "	{ redMultiplier: 1,	greenMultiplier: 1,	blueMultiplier: 1,	alphaMultiplier: 1,
 								  redOffset: -15,	greenOffset: -15,	blueOffset: -15,	alphaOffset: 0 }")
 
-		(var userPrefsComponent:gfx = "$datahub.getSingleComponent(CC.userPrefs)")
-		(var userPrefsNum:dict = "userPrefsComponent.userPrefs.chatBoxWidth" watch=false)
-		(var isPaletteVisible:bool = "WoWSPaint_PALETTE_EXPAND_PREF_KEY in userPrefsNum ? round(userPrefsNum[WoWSPaint_PALETTE_EXPAND_PREF_KEY]) : true" watch=false)
-		(bind isPaletteVisible "$event.value" init=false watch=false (event "evExpandButtonClick"))
-		(var targetRotation:number = "isPaletteVisible ? 90 : 0")
+		# Purely presentational: the host resolves the mode (incl. ADAPTIVE) and owns the write, so the
+		# chevron always points at what is actually on screen. Clicking just dispatches the negation UP.
+		(var targetRotation:number = "_isPaletteVisible ? 90 : 0")
 	)
 
 	(block
@@ -291,9 +322,10 @@
 			)
 		)
 
-		(dispatch evExpandButtonClick watch=false init=false dir="EventDirection.UP" args="{value: !isPaletteVisible}" on='click')
-		(dispatch evExpandButtonClick watch=false init=false dir="EventDirection.UP" args="{value: isPaletteVisible}" on='addedToStage')
-			
+		# Click only. The old addedToStage dispatch seeded the host's local copy of the flag; the host
+		# now reads the pref itself, and re-firing on mount would write ADAPTIVE straight back to 0/1.
+		(dispatch evExpandButtonClick watch=false init=false dir="EventDirection.UP" args="{value: !_isPaletteVisible}" on='click')
+
 		(macro MOUSE_HANDLER
 			_soundSet = "'button_tab'"
 		)
@@ -349,19 +381,20 @@
 	)
 )
 
-(def element WoWSPaint_ColorPaletteElement(_currentColor:number)
+(def element WoWSPaint_ColorPaletteElement(_currentColor:number, _palette:array)
 	(style
 		(marginTop = 10px)
 		(gap = "WoWSPaint_PALETTE_GAP")
 	)
-	(controller $Repeat renderer='WoWSPaint_ColorPaletteRowElement' count="ceil(WoWSPaint_PALETTE_COLORS.length / WoWSPaint_PALETTE_COLUMN_COUNT)"
+	(controller $Repeat renderer='WoWSPaint_ColorPaletteRowElement' count="ceil(_palette.length / WoWSPaint_PALETTE_COLUMN_COUNT)"
 		(args
 			_currentColor="_currentColor"
+			_palette="_palette"
 		)
 	)
 )
 
-(def element WoWSPaint_ColorPaletteRowElement(_currentColor:number)
+(def element WoWSPaint_ColorPaletteRowElement(_currentColor:number, _palette:array)
 	(scope
 		(var colorIndexOffset:number = "$index * WoWSPaint_PALETTE_COLUMN_COUNT")
 	)
@@ -375,19 +408,20 @@
 		(args
 			_index="colorIndexOffset + $index"
 			_currentColor="_currentColor"
+			_palette="_palette"
 		)
 	)
 )
 
-(def element WoWSPaint_ColorTileElement(_index:number, _currentColor:number)
+(def element WoWSPaint_ColorTileElement(_index:number, _currentColor:number, _palette:array)
 	(scope
 		(event evChangeColor)
 		(var colorIndex:number = "_index")
-		(var colorValue:number = "WoWSPaint_PALETTE_COLORS[colorIndex]")
-		(var isValidColor:number = "colorIndex < WoWSPaint_PALETTE_COLORS.length")
+		(var colorValue:number = "_palette[colorIndex]")
+		(var isValidColor:number = "colorIndex < _palette.length")
 		(var isSelected:bool = "colorValue == _currentColor")
 
-		(var isEraser:bool = "colorValue < 0")
+		(var isEraser:bool = "colorValue == WoWSPaint_ERASER_COLOR")
 
 		(var palettePos:number = "WoWSPaint_PALETTE_SIZE / 2")
 
