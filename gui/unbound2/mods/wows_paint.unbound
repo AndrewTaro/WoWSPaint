@@ -241,8 +241,12 @@
 			(class $FullsizeAbsolute)
 			# 0x00FFFFFF, not 0x01000000: alpha-0x00 still registers hits, while 0x01000000 renders a
 			# visible dark tint over the whole element.
-			(style (backgroundColor = 0x00FFFFFF))
-			(bind hitTest "!isPositionLocked")
+			# hitTest is a STYLE property: bound at element level it resolves against the backing
+			# UbSprite and throws "access of undefined method 'hitTest'".  It must sit inside (style).
+			(style
+				(backgroundColor = 0x00FFFFFF)
+				(bind hitTest "!isPositionLocked")
+			)
 			(macro TT_DRAGGABLE _fullKey="WoWSPaint_POSITION_KEY" _isDragEnabled="!isPositionLocked")
 		)
 		(block
