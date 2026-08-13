@@ -44,15 +44,45 @@
 		(macro TT_GET_PREF _varName="'color5'" _key="'wowsPaint.palette.color5'")
 		(macro TT_GET_PREF _varName="'color6'" _key="'wowsPaint.palette.color6'")
 		(macro TT_GET_PREF _varName="'color7'" _key="'wowsPaint.palette.color7'")
+		# Three parallel arrays because the consumers take three different colour shapes.
+		# `palette` is the packed 0xAARRGGBB for the ARGB targets (the tile swatch's backgroundColor)
+		# and for the selected-slot compare.  The two DRAW targets -- $Sector's lineColor and
+		# graphics.lineStyle -- are 24-bit RGB with alpha on a separate channel, so they need
+		# `paletteRgb`/`paletteAlpha`; handing them the packed value drops the user's alpha byte.
+		# Compose the 24-bit form from r255/g255/b255 (tops out at 0xFFFFFF) rather than unpacking
+		# the packed value -- that arithmetic overflows above 2^31.
+		# The per-channel null guards are load-bearing: on the framework's derive() exception
+		# fallback the component is just {value, visible} and every derived channel is absent.
+		# Slot 0 is the eraser -- 0xFFFFFF/1.0 reproduces what -1 masked to 24 bits already drew.
 		(var palette:array = "[
 			WoWSPaint_ERASER_COLOR,
-			null != color1 && null != color1.value ? color1.value : 0,
-			null != color2 && null != color2.value ? color2.value : 0,
-			null != color3 && null != color3.value ? color3.value : 0,
-			null != color4 && null != color4.value ? color4.value : 0,
-			null != color5 && null != color5.value ? color5.value : 0,
-			null != color6 && null != color6.value ? color6.value : 0,
-			null != color7 && null != color7.value ? color7.value : 0
+			null != color1 && null != color1.value ? color1.value : 0xFFFF0000,
+			null != color2 && null != color2.value ? color2.value : 0xFF00FF00,
+			null != color3 && null != color3.value ? color3.value : 0xFF0000FF,
+			null != color4 && null != color4.value ? color4.value : 0xFFFFFFFF,
+			null != color5 && null != color5.value ? color5.value : 0xFFFF6600,
+			null != color6 && null != color6.value ? color6.value : 0xFF4CE8AA,
+			null != color7 && null != color7.value ? color7.value : 0xFF13C9F7
+		]")
+		(var paletteRgb:array = "[
+			0xFFFFFF,
+			null != color1 && null != color1.r255 ? color1.r255 * 65536 + color1.g255 * 256 + color1.b255 : 0xFF0000,
+			null != color2 && null != color2.r255 ? color2.r255 * 65536 + color2.g255 * 256 + color2.b255 : 0x00FF00,
+			null != color3 && null != color3.r255 ? color3.r255 * 65536 + color3.g255 * 256 + color3.b255 : 0x0000FF,
+			null != color4 && null != color4.r255 ? color4.r255 * 65536 + color4.g255 * 256 + color4.b255 : 0xFFFFFF,
+			null != color5 && null != color5.r255 ? color5.r255 * 65536 + color5.g255 * 256 + color5.b255 : 0xFF6600,
+			null != color6 && null != color6.r255 ? color6.r255 * 65536 + color6.g255 * 256 + color6.b255 : 0x4CE8AA,
+			null != color7 && null != color7.r255 ? color7.r255 * 65536 + color7.g255 * 256 + color7.b255 : 0x13C9F7
+		]")
+		(var paletteAlpha:array = "[
+			1.0,
+			null != color1 && null != color1.a ? color1.a : 1.0,
+			null != color2 && null != color2.a ? color2.a : 1.0,
+			null != color3 && null != color3.a ? color3.a : 1.0,
+			null != color4 && null != color4.a ? color4.a : 1.0,
+			null != color5 && null != color5.a ? color5.a : 1.0,
+			null != color6 && null != color6.a ? color6.a : 1.0,
+			null != color7 && null != color7.a ? color7.a : 1.0
 		]")
 
 		# Runtime state, not a user-facing setting (the schema marks it hidden): seed once from the
@@ -61,6 +91,8 @@
 		(var brushColorIndex:number = "null != brushIndexPref && null != brushIndexPref.value ? round(brushIndexPref.value) : 0" watch=false)
 		(bind brushColorIndex "$event.colorIndex" watch=false init=false (event "evChangeColor"))
 		(var brushColor:number = "brushColorIndex < palette.length ? palette[brushColorIndex] : palette[0]")
+		(var brushRgb:number = "brushColorIndex < paletteRgb.length ? paletteRgb[brushColorIndex] : paletteRgb[0]")
+		(var brushAlpha:number = "brushColorIndex < paletteAlpha.length ? paletteAlpha[brushColorIndex] : paletteAlpha[0]")
 
 		(var isEraser:bool = "brushColor == WoWSPaint_ERASER_COLOR")
 		(var brushSize:number = "isEraser ? 50 : 3")
@@ -104,6 +136,8 @@
 			# Apparently, addChildAt can handle the element addition without binding count.
 			(args
 				_currentColor="brushColor"
+				_currentRgb="brushRgb"
+				_currentAlpha="brushAlpha"
 			)
 			(bindcall addChildAt "0" watch=false init=false (event "evStartDraw"))
 		)
@@ -114,11 +148,11 @@
 	(element WoWSPaint_ControlElement _currentColor="brushColor" _palette="palette")
 
 	# Brush
-	# (element WoWSPaint_BrushElement _currentColor="brushColor" _size="brushSize")
+	# (element WoWSPaint_BrushElement _currentColor="brushColor" _currentRgb="brushRgb" _currentAlpha="brushAlpha" _size="brushSize")
 
 	# Experiment: this solves the perf issue?
 	(controller $Tooltip (renderer = 'WoWSPaint_BrushElement')
-		(args _currentColor="brushColor" _size="brushSize")
+		(args _currentColor="brushColor" _currentRgb="brushRgb" _currentAlpha="brushAlpha" _size="brushSize")
 		(position="trackMouse")
 		(offset=[0,0])
 		(screenBoundsOffset={left:-100, top:-100, right:-100, bottom:-100})
@@ -127,7 +161,7 @@
 	)
 )
 
-(def element WoWSPaint_BrushElement(_currentColor:number, _size:number)
+(def element WoWSPaint_BrushElement(_currentColor:number, _currentRgb:number, _currentAlpha:number, _size:number)
 	(scope
 		(var isSmall:bool = "_size < 5 ? true : false")
 	)
@@ -136,17 +170,19 @@
 		(hitTest = false)
 	)
 
+	# lineColor is a 24-bit RGB target with alpha on the sibling lineAlpha, so the ring's own
+	# opacity is scaled by the colour's alpha -- the cursor previews what the stroke will paint.
 	(controller $Sector
 		(bind arc "360")
 		(bind radius "isSmall ? _size : _size / 2")
-		(bind lineColor "_currentColor")
+		(bind lineColor "_currentRgb")
 		(bind lineThickness "isSmall ? 2 : 1")
-		(bind lineAlpha "isSmall ? 1.0 : 0.4")
+		(bind lineAlpha "(isSmall ? 1.0 : 0.4) * _currentAlpha")
 	)
 	(cacheAsBitmap=true)
 )
 
-(def element WoWSPaint_LayerElement(_currentColor:number)
+(def element WoWSPaint_LayerElement(_currentColor:number, _currentRgb:number, _currentAlpha:number)
 	(scope
 		(event evStartDraw)
 		(event evClearDraw)
@@ -175,7 +211,9 @@
 	)
 
 	(.graphics
-		(bindcall lineStyle "brushSize" "_currentColor" watch=false init=false (bind enabled "isActiveLayer") (event "evStartDraw"))
+		# lineStyle is positional (thickness, color, alpha) and its colour is 24-bit RGB: the third
+		# argument is the only way the stored alpha reaches the stroke -- omitted, it defaults to 1.0.
+		(bindcall lineStyle "brushSize" "_currentRgb" "_currentAlpha" watch=false init=false (bind enabled "isActiveLayer") (event "evStartDraw"))
 		(bindcall moveTo "round($event.x / scale)" "round($event.y / scale)" watch=false init=false (bind enabled "isActiveLayer") (event "evStartDraw"))
 		(bindcall lineTo "round($event.x / scale)" "round($event.y / scale)" watch=false init=false (bind enabled "isActiveLayer") (event "evMouseMove"))
 		(bindcall clear watch=false init=false (event "evClearDraw"))
