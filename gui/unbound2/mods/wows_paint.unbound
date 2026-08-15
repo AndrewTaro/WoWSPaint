@@ -165,6 +165,9 @@
 	# the stroke's real opacity.
 	# NB the once-documented rule that this target "takes 24-bit RGB and ignores the high byte" is
 	# WRONG on both halves: 24-bit renders black, and if the byte were merely ignored it would not.
+	# What IS established (2026-08-16): the byte must be PRESENT for the colour to render at all,
+	# yet it is not applied as alpha -- opacity tracks the separate channel linearly, so alpha lands
+	# once.  Read that as "the target wants a full 32-bit ARGB", not as "the byte does nothing".
 	(controller $Sector
 		(bind arc "360")
 		(bind radius "isSmall ? _size : _size / 2")
@@ -218,9 +221,10 @@
 		# Alpha is deliberately 1 here and applied to the layer instead (see the style block): a
 		# per-segment alpha beads the stroke at every joint.  Every other lineStyle caller in these
 		# repos also passes 1 -- this was the only fractional one.
-		# UNVERIFIED: whether the packed value's high byte is ALSO applied as alpha, which would
-		# attenuate a part-transparent colour twice (set 50%, get 25%) now against the layer alpha.
-		# Only "alpha responds" has been observed; nobody has measured the result against a target.
+		# The packed value's high byte is NOT also applied as alpha -- checked in-game 2026-08-16 by
+		# sweeping the setting: opacity tracks it LINEARLY.  A second application would square it
+		# (set 0.5, get 0.25), which is not what happens.  So alpha lands exactly once, from the
+		# layer, and a part-transparent colour is not attenuated twice.
 		(bindcall lineStyle "brushSize" "_currentColor" "1" watch=false init=false (bind enabled "isActiveLayer") (event "evStartDraw"))
 		(bindcall moveTo "round($event.x / scale)" "round($event.y / scale)" watch=false init=false (bind enabled "isActiveLayer") (event "evStartDraw"))
 		(bindcall lineTo "round($event.x / scale)" "round($event.y / scale)" watch=false init=false (bind enabled "isActiveLayer") (event "evMouseMove"))
