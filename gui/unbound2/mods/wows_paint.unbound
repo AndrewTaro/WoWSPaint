@@ -46,11 +46,27 @@
 		(macro TT_GET_PREF _varName="'color7'" _key="'wowsPaint.palette.color7'")
 		# Two parallel arrays.  `palette` is the packed 0xAARRGGBB, taken by EVERY colour target here
 		# -- the tile swatch's backgroundColor, the selected-slot compare, and both draw targets
-		# ($Sector's lineColor and graphics.lineStyle).  Do NOT hand the draw targets a 24-bit RGB:
-		# it renders pure BLACK (in-game 2026-08-16; see the lineColor note on WoWSPaint_BrushElement).
-		# `paletteAlpha` exists because those two targets do not read alpha out of the packed value,
-		# so it has to ride their separate alpha channel.
-		# The null guards are load-bearing: on the framework's derive() exception fallback the
+		# ($Sector's lineColor and graphics.lineStyle).  `.graphics` is the AS3 Sprite.graphics, so
+		# those two mask the colour to 24 bits; packed and 24-bit are interchangeable there.  They do
+		# NOT read alpha out of it, which is why `paletteAlpha` exists and rides the separate channel.
+		#
+		# ⚠ Both arrays read the component attribute BARE, and that is load-bearing.  A value read off
+		# a gfx component passes through fine when handed straight to a property, but collapses to 0
+		# the moment you do arithmetic on it -- so `color1.r255 * 65536 + ...` yields 0, i.e. BLACK,
+		# even though `color1.r255` on its own is exactly 255.  That is what painted every stroke
+		# black until 2026-08-16, and it is NOT a bit-width problem.  Measured, with a rect probe:
+		#     lineStyle 0xFFFF0000 / 0xFF0000 / 255*65536   -> all red   (literal arithmetic is fine)
+		#     lineStyle pcolor.r255                          -> blue = 255 (the read itself is fine)
+		#     lineStyle pcolor.r255*65536 + ...              -> BLACK
+		#     via (var pr:number = "pcolor.r255") then pr*65536 -> red   (THE workaround)
+		#     via (number)pcolor.r255 * 65536                -> BLACK  (the cast does NOT help)
+		# If arithmetic on component data is ever needed here, launder each channel through a
+		# :number-typed var first.  That is also why the framework's own colour picker can compute
+		# freely on component data -- it assigns to :number vars before doing so.
+		# Unrelated second trap, same black symptom: `%` breaks above 2^31 (`0xFFFF0000 % 0x1000000`
+		# renders black even as a pure literal), so do not reach for modulo to strip the alpha byte.
+		#
+		# The null guards are load-bearing too: on the framework's derive() exception fallback the
 		# component is just {value, visible}, so every consumer must tolerate a missing field.
 		# Slot 0 is the eraser sentinel (-1), carried through to the draw targets unchanged; its
 		# paletteAlpha of 1.0 matches the pre-rework call, which passed no alpha argument at all.
@@ -158,13 +174,11 @@
 		(hitTest = false)
 	)
 
-	# lineColor takes the PACKED 0xAARRGGBB, not a 24-bit RGB.  Handing it the 24-bit form drew the
-	# ring pure BLACK (in-game 2026-08-16, tried both from r255/g255/b255 and from `value % 0x1000000`
-	# -- the value's provenance was not the issue), whereas the packed form has rendered correctly
-	# here for years.  Alpha still rides the sibling lineAlpha, which is what makes the ring preview
-	# the stroke's real opacity.
-	# NB the once-documented rule that this target "takes 24-bit RGB and ignores the high byte" is
-	# WRONG on both halves: 24-bit renders black, and if the byte were merely ignored it would not.
+	# lineColor is an AS3 24-bit colour: it masks the high byte off, so packed and 24-bit render
+	# identically and the stored alpha CANNOT arrive through it -- hence the sibling lineAlpha, which
+	# is what makes the ring preview the stroke's real opacity.  Passing `_currentColor` (packed) is
+	# therefore fine and is what has always shipped; the black rings of 2026-08-16 were the
+	# component-arithmetic trap documented at the palette arrays, not the colour's width.
 	# What IS established (2026-08-16): the byte must be PRESENT for the colour to render at all,
 	# yet it is not applied as alpha -- opacity tracks the separate channel linearly, so alpha lands
 	# once.  Read that as "the target wants a full 32-bit ARGB", not as "the byte does nothing".
@@ -216,15 +230,14 @@
 	)
 
 	(.graphics
-		# lineStyle is positional (thickness, color, alpha).  The colour is the PACKED 0xAARRGGBB --
-		# a 24-bit RGB drew the stroke pure BLACK (see the lineColor note above).
+		# lineStyle is positional (thickness, color, alpha) and is the AS3 call: the colour is masked
+		# to 24 bits, so passing the packed value is fine (see the lineColor note above).
 		# Alpha is deliberately 1 here and applied to the layer instead (see the style block): a
 		# per-segment alpha beads the stroke at every joint.  Every other lineStyle caller in these
 		# repos also passes 1 -- this was the only fractional one.
-		# The packed value's high byte is NOT also applied as alpha -- checked in-game 2026-08-16 by
-		# sweeping the setting: opacity tracks it LINEARLY.  A second application would square it
-		# (set 0.5, get 0.25), which is not what happens.  So alpha lands exactly once, from the
-		# layer, and a part-transparent colour is not attenuated twice.
+		# The high byte is masked off, not applied as alpha, so nothing is attenuated twice: measured
+		# directly (lineStyle 0x80FF0000 with alpha=1 renders FULL red, not half), and the alpha
+		# argument itself is exactly linear (alpha=0.5 over white measures 255,128,128).
 		(bindcall lineStyle "brushSize" "_currentColor" "1" watch=false init=false (bind enabled "isActiveLayer") (event "evStartDraw"))
 		(bindcall moveTo "round($event.x / scale)" "round($event.y / scale)" watch=false init=false (bind enabled "isActiveLayer") (event "evStartDraw"))
 		(bindcall lineTo "round($event.x / scale)" "round($event.y / scale)" watch=false init=false (bind enabled "isActiveLayer") (event "evMouseMove"))
