@@ -201,16 +201,27 @@
 		(height = "100%")
 		(hitTest = false)
 		(position = "absolute")
+		# The stroke's opacity belongs on the LAYER, not on its geometry.  lineStyle applies alpha
+		# per SEGMENT, and a freehand stroke is a polyline whose segments overlap at every joint, so
+		# each vertex composited twice -- 1-(1-a)^2 rather than a -- and the stroke came out beaded
+		# with near-solid dots at the mouse sample rate.  Drawing the geometry opaque and fading the
+		# whole layer composites it once (that is what the blendMode below is for), so overlap can no
+		# longer change opacity.  One layer is one stroke, so this is per-stroke alpha.
+		# `=` not `bind`: it evaluates once at construction, which is what freezes this stroke's alpha
+		# against a later brush change -- the same reason isEraser above is captured rather than bound.
+		(alpha = "_currentAlpha")
 	)
 
 	(.graphics
 		# lineStyle is positional (thickness, color, alpha).  The colour is the PACKED 0xAARRGGBB --
-		# a 24-bit RGB drew the stroke pure BLACK (see the lineColor note above).  The third argument
-		# is how the stored alpha reaches the stroke; omitted, it defaults to 1.0.
-		# UNVERIFIED: whether the packed value's high byte is ALSO applied as alpha.  If it is, a
-		# part-transparent colour is attenuated twice (set 50%, get 25%).  Observed so far is only
-		# that alpha responds; nobody has checked the resulting opacity against a measured target.
-		(bindcall lineStyle "brushSize" "_currentColor" "_currentAlpha" watch=false init=false (bind enabled "isActiveLayer") (event "evStartDraw"))
+		# a 24-bit RGB drew the stroke pure BLACK (see the lineColor note above).
+		# Alpha is deliberately 1 here and applied to the layer instead (see the style block): a
+		# per-segment alpha beads the stroke at every joint.  Every other lineStyle caller in these
+		# repos also passes 1 -- this was the only fractional one.
+		# UNVERIFIED: whether the packed value's high byte is ALSO applied as alpha, which would
+		# attenuate a part-transparent colour twice (set 50%, get 25%) now against the layer alpha.
+		# Only "alpha responds" has been observed; nobody has measured the result against a target.
+		(bindcall lineStyle "brushSize" "_currentColor" "1" watch=false init=false (bind enabled "isActiveLayer") (event "evStartDraw"))
 		(bindcall moveTo "round($event.x / scale)" "round($event.y / scale)" watch=false init=false (bind enabled "isActiveLayer") (event "evStartDraw"))
 		(bindcall lineTo "round($event.x / scale)" "round($event.y / scale)" watch=false init=false (bind enabled "isActiveLayer") (event "evMouseMove"))
 		(bindcall clear watch=false init=false (event "evClearDraw"))
