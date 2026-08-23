@@ -93,7 +93,7 @@
 
 		# Runtime state, not a user-facing setting (the schema marks it hidden): seed once from the
 		# store, then the click event owns it -- hence watch=false, as in the pre-rewrite view.
-		(macro TT_GET_PREF _varName="'brushIndexPref'" _key="'wowsPaint.brushColorIndex'")
+		(macro TT_GET_PREF _varName="'brushIndexPref'" _key="'wowsPaint.selectedBrush'")
 		(var brushColorIndex:number = "null != brushIndexPref && null != brushIndexPref.value ? round(brushIndexPref.value) : 0" watch=false)
 		(bind brushColorIndex "$event.colorIndex" watch=false init=false (event "evChangeColor"))
 		(var brushColor:number = "brushColorIndex < palette.length ? palette[brushColorIndex] : palette[0]")
@@ -108,7 +108,7 @@
 		(bind width "stageWidth")
 	)
 
-	(bindcall externalCall 'direct.action' "['mod.setPref', ['wowsPaint.brushColorIndex', $event.colorIndex]]" init=false watch=false (event "evChangeColor"))
+	(bindcall externalCall 'direct.action' "['mod.setPref', ['wowsPaint.selectedBrush', $event.colorIndex]]" init=false watch=false (event "evChangeColor"))
 
 	(dispatch evMouseActive 	watch=false init=false args="{}" (bind enabled "isMouseActive")  (bind trigger "isMouseActive"))
 	(dispatch evMouseInactive	watch=false init=false args="{}" (bind enabled "!isMouseActive") (bind trigger "isMouseActive"))
@@ -255,21 +255,21 @@
 		# Python owns the position value AND the first-placement default (CMS anchor/offset), so the
 		# old view-side defaultPos + stageHeight math is gone.
 		(macro TT_DRAGGABLE_POSITION _fullKey="WoWSPaint_POSITION_KEY")
-		(macro TT_GET_PREF _varName="'lockPref'" _key="'wowsPaint.disableDragdrop'")
+		(macro TT_GET_PREF _varName="'lockPref'" _key="'wowsPaint.disableDragDrop'")
 		(var isPositionLocked:bool = "null != lockPref && null != lockPref.value ? lockPref.value : false")
 
 		(var camera:gfx = "$datahub.getSingleComponent(CC.camera)")
 		(var altVision:bool = "null != camera ? camera.altVision : false" (event "camera.evAltVisionChanged"))
 
 		(event evExpandButtonClick)
-		(macro TT_GET_PREF _varName="'paletteModePref'" _key="'wowsPaint.paletteDisplayMode'")
+		(macro TT_GET_PREF _varName="'paletteModePref'" _key="'wowsPaint.palette.displayMode'")
 		(var paletteMode:number = "null != paletteModePref && null != paletteModePref.value ? paletteModePref.value : TT_CONST.DISPLAY_MODE.ENABLED")
 		(var isPaletteVisible:bool = "paletteMode == TT_CONST.DISPLAY_MODE.ADAPTIVE ? altVision : paletteMode")
 	)
 
 	# The HUD chevron writes the resolved 0/1 -- an explicit click leaves ADAPTIVE rather than
 	# toggling within it, which is the only reading that keeps one click = one visible change.
-	(bindcall externalCall 'direct.action' "['mod.setPref', ['wowsPaint.paletteDisplayMode', $event.value ? TT_CONST.DISPLAY_MODE.ENABLED : TT_CONST.DISPLAY_MODE.DISABLED]]" init=false watch=false (event "evExpandButtonClick"))
+	(bindcall externalCall 'direct.action' "['mod.setPref', ['wowsPaint.palette.displayMode', $event.value ? TT_CONST.DISPLAY_MODE.ENABLED : TT_CONST.DISPLAY_MODE.DISABLED]]" init=false watch=false (event "evExpandButtonClick"))
 
 	(style
 		(position = "absolute")
