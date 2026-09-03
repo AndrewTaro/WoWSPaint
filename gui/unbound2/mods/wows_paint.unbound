@@ -1,5 +1,5 @@
 # Slot 0 is the eraser and is NOT a pref -- it is a brush MODE (it selects BlendMode.subtract
-# downstream), not a colour the user can pick. Slots 1..7 come from wowsPaint.palette.color1..7.
+# downstream), not a colour the user can pick. Slots 1..7 come from ttaro.wowsPaint.palette.color1..7.
 # Detect it by EQUALITY with this sentinel, never by sign: the palette now carries packed
 # 0xAARRGGBB values above 2^31, so a `< 0` test would depend on the bridge never handing one
 # back signed.
@@ -7,7 +7,7 @@
 (def constant WoWSPaint_PALETTE_COLUMN_COUNT "4")
 (def constant WoWSPaint_PALETTE_SIZE "28px")
 (def constant WoWSPaint_PALETTE_GAP "3px")
-(def constant WoWSPaint_POSITION_KEY 'wowsPaint.position')
+(def constant WoWSPaint_POSITION_KEY 'ttaro.wowsPaint.position')
 
 (def element WorldOfWarshipsPaint() layout=true
 	(scope
@@ -37,13 +37,13 @@
 		# Palette is built ONCE here and threaded down as _palette -- reading the seven colour prefs
 		# in the tile renderer instead would stand up 7 watcher chains per tile across 8 tiles.
 		# Reactive on purpose (no watch=false): editing a colour in the config panel repaints live.
-		(macro TT_GET_PREF _varName="'color1'" _key="'wowsPaint.palette.color1'")
-		(macro TT_GET_PREF _varName="'color2'" _key="'wowsPaint.palette.color2'")
-		(macro TT_GET_PREF _varName="'color3'" _key="'wowsPaint.palette.color3'")
-		(macro TT_GET_PREF _varName="'color4'" _key="'wowsPaint.palette.color4'")
-		(macro TT_GET_PREF _varName="'color5'" _key="'wowsPaint.palette.color5'")
-		(macro TT_GET_PREF _varName="'color6'" _key="'wowsPaint.palette.color6'")
-		(macro TT_GET_PREF _varName="'color7'" _key="'wowsPaint.palette.color7'")
+		(macro TT_GET_PREF _varName="'color1'" _key="'ttaro.wowsPaint.palette.color1'")
+		(macro TT_GET_PREF _varName="'color2'" _key="'ttaro.wowsPaint.palette.color2'")
+		(macro TT_GET_PREF _varName="'color3'" _key="'ttaro.wowsPaint.palette.color3'")
+		(macro TT_GET_PREF _varName="'color4'" _key="'ttaro.wowsPaint.palette.color4'")
+		(macro TT_GET_PREF _varName="'color5'" _key="'ttaro.wowsPaint.palette.color5'")
+		(macro TT_GET_PREF _varName="'color6'" _key="'ttaro.wowsPaint.palette.color6'")
+		(macro TT_GET_PREF _varName="'color7'" _key="'ttaro.wowsPaint.palette.color7'")
 		# Two parallel arrays.  `palette` is the packed 0xAARRGGBB, taken by EVERY colour target here
 		# -- the tile swatch's backgroundColor, the selected-slot compare, and both draw targets
 		# ($Sector's lineColor and graphics.lineStyle).  `.graphics` is the AS3 Sprite.graphics, so
@@ -93,7 +93,7 @@
 
 		# Runtime state, not a user-facing setting (the schema marks it hidden): seed once from the
 		# store, then the click event owns it -- hence watch=false, as in the pre-rewrite view.
-		(macro TT_GET_PREF _varName="'brushIndexPref'" _key="'wowsPaint.selectedBrush'")
+		(macro TT_GET_PREF _varName="'brushIndexPref'" _key="'ttaro.wowsPaint.selectedBrush'")
 		(var brushColorIndex:number = "null != brushIndexPref && null != brushIndexPref.value ? round(brushIndexPref.value) : 0" watch=false)
 		(bind brushColorIndex "$event.colorIndex" watch=false init=false (event "evChangeColor"))
 		(var brushColor:number = "brushColorIndex < palette.length ? palette[brushColorIndex] : palette[0]")
@@ -108,7 +108,7 @@
 		(bind width "stageWidth")
 	)
 
-	(bindcall externalCall 'direct.action' "['mod.setPref', ['wowsPaint.selectedBrush', $event.colorIndex]]" init=false watch=false (event "evChangeColor"))
+	(bindcall externalCall 'direct.action' "['mod.setPref', ['ttaro.wowsPaint.selectedBrush', $event.colorIndex]]" init=false watch=false (event "evChangeColor"))
 
 	(dispatch evMouseActive 	watch=false init=false args="{}" (bind enabled "isMouseActive")  (bind trigger "isMouseActive"))
 	(dispatch evMouseInactive	watch=false init=false args="{}" (bind enabled "!isMouseActive") (bind trigger "isMouseActive"))
@@ -255,21 +255,21 @@
 		# Python owns the position value AND the first-placement default (CMS anchor/offset), so the
 		# old view-side defaultPos + stageHeight math is gone.
 		(macro TT_DRAGGABLE_POSITION _fullKey="WoWSPaint_POSITION_KEY")
-		(macro TT_GET_PREF _varName="'lockPref'" _key="'wowsPaint.disableDragDrop'")
+		(macro TT_GET_PREF _varName="'lockPref'" _key="'ttaro.wowsPaint.disableDragDrop'")
 		(var isPositionLocked:bool = "null != lockPref && null != lockPref.value ? lockPref.value : false")
 
 		(var camera:gfx = "$datahub.getSingleComponent(CC.camera)")
 		(var altVision:bool = "null != camera ? camera.altVision : false" (event "camera.evAltVisionChanged"))
 
 		(event evExpandButtonClick)
-		(macro TT_GET_PREF _varName="'paletteModePref'" _key="'wowsPaint.palette.displayMode'")
+		(macro TT_GET_PREF _varName="'paletteModePref'" _key="'ttaro.wowsPaint.palette.displayMode'")
 		(var paletteMode:number = "null != paletteModePref && null != paletteModePref.value ? paletteModePref.value : TT_CONST.DISPLAY_MODE.ENABLED")
 		(var isPaletteVisible:bool = "paletteMode == TT_CONST.DISPLAY_MODE.ADAPTIVE ? altVision : paletteMode")
 	)
 
 	# The HUD chevron writes the resolved 0/1 -- an explicit click leaves ADAPTIVE rather than
 	# toggling within it, which is the only reading that keeps one click = one visible change.
-	(bindcall externalCall 'direct.action' "['mod.setPref', ['wowsPaint.palette.displayMode', $event.value ? TT_CONST.DISPLAY_MODE.ENABLED : TT_CONST.DISPLAY_MODE.DISABLED]]" init=false watch=false (event "evExpandButtonClick"))
+	(bindcall externalCall 'direct.action' "['mod.setPref', ['ttaro.wowsPaint.palette.displayMode', $event.value ? TT_CONST.DISPLAY_MODE.ENABLED : TT_CONST.DISPLAY_MODE.DISABLED]]" init=false watch=false (event "evExpandButtonClick"))
 
 	(style
 		(position = "absolute")
