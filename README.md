@@ -15,7 +15,7 @@ On the other hand, you also don't like to flush the drawings by mistake while ca
 
 # Requirements
 You must install the following for this mod to work:
-- [DraggableUnbound2](../../../DraggableUnbound2)
+- [TTaro Mod Config](../../../TTaroModConfig)
 
 # Install
 1. Download a zip.
