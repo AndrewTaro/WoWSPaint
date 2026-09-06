@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 4,
+  "id": "cmtkswux4000lv014rzn53jdu",
+  "author": "ttaro",
+  "modName": "WoWS Paint",
+  "slug": "wows-paint",
+  "order": 21,
+  "tree": [
+    {
+      "kind": "group",
+      "key": "cmtktam9p00a9v0d4akmnijs2",
+      "label": "IDS_TT_TITLE_GENERAL",
+      "collapse": "expanded",
+      "children": [
+        {
+          "kind": "setting",
+          "control": "toggle",
+          "key": "wowsPaint.disableDragDrop",
+          "label": "IDS_TT_DISABLE_DRAG_DROP",
+          "hint": {
+            "text": "IDS_TT_HINT_DISABLE_DRAG_DROP"
+          },
+          "default": false
+        },
+        {
+          "kind": "setting",
+          "control": "position",
+          "key": "wowsPaint.position",
+          "label": "IDS_TT_DRAGDROP_RESET",
+          "hint": {
+            "text": "IDS_TT_HINT_DRAGDROP_RESET"
+          },
+          "defaultPosition": {
+            "x": {
+              "anchor": "left",
+              "offset": 400
+            },
+            "y": {
+              "anchor": "bottom",
+              "offset": 48
+            }
+          }
+        }
+      ]
+    },
+    {
+      "kind": "group",
+      "key": "cmt4us0hs001ov0rwaru7jjn4",
+      "aggregate": "inline",
+      "children": [
+        {
+          "kind": "setting",
+          "control": "dropdown",
+          "key": "wowsPaint.palette.displayMode",
+          "label": "IDS_TT_DISPLAY_MODE",
+          "default": 1,
+          "options": [
+            {
+              "value": 0,
+              "phrase": "IDS_TURN_OFF"
+            },
+            {
+              "value": 1,
+              "phrase": "IDS_TURN_ON"
+            },
+            {
+              "value": 2,
+              "phrase": "IDS_ALT_VISION_MODE_1",
+              "icon": "CMD_ICONS"
+            }
+          ],
+          "optionStyle": "KEY"
+        }
+      ]
+    },
+    {
+      "kind": "setting",
+      "control": "number",
+      "key": "wowsPaint.selectedBrush",
+      "label": "Selected brush (runtime state)",
+      "default": 0,
+      "min": 0,
+      "max": 7,
+      "step": 1,
+      "hidden": true
+    },
+    {
+      "kind": "group",
+      "key": "cmsll6ays000av0c48nv2ujp8",
+      "label": "Palette Colors",
+      "collapse": "expanded",
+      "children": [
+        {
+          "kind": "setting",
+          "control": "color",
+          "key": "wowsPaint.palette.color1",
+          "label": "IDS_TT_COLOR",
+          "default": 4294901760,
+          "min": 0,
+          "max": 4294967295
+        },
+        {
+          "kind": "setting",
+          "control": "color",
+          "key": "wowsPaint.palette.color2",
+          "label": "IDS_TT_COLOR",
+          "default": 4278255360,
+          "min": 0,
+          "max": 4294967295
+        },
+        {
+          "kind": "setting",
+          "control": "color",
+          "key": "wowsPaint.palette.color3",
+          "label": "IDS_TT_COLOR",
+          "default": 4278190335,
+          "min": 0,
+          "max": 4294967295
+        },
+        {
+          "kind": "setting",
+          "control": "color",
+          "key": "wowsPaint.palette.color4",
+          "label": "IDS_TT_COLOR",
+          "default": 4294967295,
+          "min": 0,
+          "max": 4294967295
+        },
+        {
+          "kind": "setting",
+          "control": "color",
+          "key": "wowsPaint.palette.color5",
+          "label": "IDS_TT_COLOR",
+          "default": 4294927872,
+          "min": 0,
+          "max": 4294967295
+        },
+        {
+          "kind": "setting",
+          "control": "color",
+          "key": "wowsPaint.palette.color6",
+          "label": "IDS_TT_COLOR",
+          "default": 4283230378,
+          "min": 0,
+          "max": 4294967295
+        },
+        {
+          "kind": "setting",
+          "control": "color",
+          "key": "wowsPaint.palette.color7",
+          "label": "IDS_TT_COLOR",
+          "default": 4279486967,
+          "min": 0,
+          "max": 4294967295
+        }
+      ]
+    }
+  ]
+}

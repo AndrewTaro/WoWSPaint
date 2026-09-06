@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 4,
+  "opVocabularyVersion": 1,
+  "slug": "wows-paint",
+  "migrations": [
+    {
+      "version": 1,
+      "description": "flat keys → dotted ancestry keys",
+      "ops": [
+        {
+          "op": "rename",
+          "from": "WoWSPaint_brushColorIndex",
+          "to": "wowsPaint.selectedBrush"
+        },
+        {
+          "op": "rename",
+          "from": "WoWSPaint_paletteExpand",
+          "to": "wowsPaint.palette.displayMode"
+        },
+        {
+          "op": "rename",
+          "from": "WoWSPaintDisableDragDrop",
+          "to": "wowsPaint.disableDragDrop"
+        }
+      ]
+    }
+  ],
+  "legacyPositions": [
+    {
+      "key": "wowsPaint.position",
+      "element": "WoWSPaint"
+    }
+  ]
+}
