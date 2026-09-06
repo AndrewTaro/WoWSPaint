@@ -110,13 +110,13 @@
 
 	(bindcall externalCall 'direct.action' "['mod.setPref', ['ttaro.wowsPaint.selectedBrush', $event.colorIndex]]" init=false watch=false (event "evChangeColor"))
 
-	(dispatch evMouseActive 	watch=false init=false args="{}" (bind enabled "isMouseActive")  (bind trigger "isMouseActive"))
-	(dispatch evMouseInactive	watch=false init=false args="{}" (bind enabled "!isMouseActive") (bind trigger "isMouseActive"))
-	(dispatch evStartDraw		watch=false init=false dir="EventDirection.DOWN" args="{isDrawing:true, x: $event.x, y: $event.y}" (event "evMouseDown"))
-	(dispatch evStopDraw		watch=false init=false dir="EventDirection.DOWN" args="{isDrawing:false}" (event "evMouseUp") (event "evMouseInactive"))
-	(dispatch evClearDraw		watch=false init=false dir="EventDirection.DOWN" args="{}" (event "evClearButtonClick"))
-	(dispatch evCheckMouseBeforeClear watch=false init=false args="{}" delay=2 (bind enabled "isPlayer") (event "evMouseInactive"))
-	(dispatch evClearDraw 		watch=false init=false args="{}" dir="EventDirection.DOWN" (bind enabled "!isMouseActive") (event "evCheckMouseBeforeClear"))
+	(dispatch evMouseActive args="{}" (bind enabled "isMouseActive")  (bind trigger "isMouseActive"))
+	(dispatch evMouseInactive args="{}" (bind enabled "!isMouseActive") (bind trigger "isMouseActive"))
+	(dispatch evStartDraw dir="EventDirection.DOWN" args="{isDrawing:true, x: $event.x, y: $event.y}" (event "evMouseDown"))
+	(dispatch evStopDraw dir="EventDirection.DOWN" args="{isDrawing:false}" (event "evMouseUp") (event "evMouseInactive"))
+	(dispatch evClearDraw dir="EventDirection.DOWN" args="{}" (event "evClearButtonClick"))
+	(dispatch evCheckMouseBeforeClear args="{}" delay=2 (bind enabled "isPlayer") (event "evMouseInactive"))
+	(dispatch evClearDraw args="{}" dir="EventDirection.DOWN" (bind enabled "!isMouseActive") (event "evCheckMouseBeforeClear"))
 
 	#canvas
 	(block
@@ -129,11 +129,11 @@
 		)
 
 		#(dispatch evMouseDown args="{x: $event.stageX, y: $event.stageY}" on='mouseDown') #requires hitTest=true and backgroundColor
-		(dispatch evMouseDown	watch=false init=false args="{x: $event.stageX, y: $event.stageY}" on='stageMouseDown')
-		(dispatch evMouseUp 	watch=false init=false dir="EventDirection.DOWN"  args="{}" on='stageMouseUp')
+		(dispatch evMouseDown args="{x: $event.stageX, y: $event.stageY}" on='stageMouseDown')
+		(dispatch evMouseUp dir="EventDirection.DOWN"  args="{}" on='stageMouseUp')
 		# (dispatch evStageMouseMove args="{x: $event.stageX, y: $event.stageY}" on='stageMouseMove')
 		# (dispatch evMouseMove dir="EventDirection.DOWN" (bind enabled "isDrawing") (event "evStageMouseMove"))
-		(dispatch evMouseMove 	watch=false init=false dir="EventDirection.DOWN" args="$event ? {x: $event.stageX, y: $event.stageY} : null" on='stageMouseMove' (bind enabled "isDrawing"))
+		(dispatch evMouseMove dir="EventDirection.DOWN" args="$event ? {x: $event.stageX, y: $event.stageY} : null" on='stageMouseMove' (bind enabled "isDrawing"))
 
 		(controller $Repeat renderer='WoWSPaint_LayerElement'
 			#(bind count "0" watch=false (event "evClearDraw"))
@@ -282,14 +282,12 @@
 		(bindcall play
 			to	="{alpha: 0.3}"
 			duration=0.15
-			killAll=true
 			(bind enabled "!isMouseActive")
 			(bind trigger "isMouseActive")
 		)
 		(bindcall play
 			to	="{alpha: 1.0}"
 			duration=0.15
-			killAll=true
 			(bind enabled "isMouseActive")
 			(bind trigger "isMouseActive")
 		)
@@ -391,7 +389,7 @@
 
 		# Click only. The old addedToStage dispatch seeded the host's local copy of the flag; the host
 		# now reads the pref itself, and re-firing on mount would write ADAPTIVE straight back to 0/1.
-		(dispatch evExpandButtonClick watch=false init=false dir="EventDirection.UP" args="{value: !_isPaletteVisible}" on='click')
+		(dispatch evExpandButtonClick dir="EventDirection.UP" args="{value: !_isPaletteVisible}" on='click')
 
 		(macro MOUSE_HANDLER
 			_soundSet = "'button_tab'"
