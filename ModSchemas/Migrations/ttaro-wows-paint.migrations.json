@@ -1,12 +1,17 @@
 {
   "schemaVersion": 4,
-  "opVocabularyVersion": 1,
+  "opVocabularyVersion": 3,
   "slug": "wows-paint",
   "migrations": [
     {
       "version": 1,
       "description": "flat keys → dotted ancestry keys",
       "ops": [
+        {
+          "op": "rename",
+          "from": "WoWSPaintDisableDragDrop",
+          "to": "wowsPaint.disableDragDrop"
+        },
         {
           "op": "rename",
           "from": "WoWSPaint_brushColorIndex",
@@ -16,11 +21,6 @@
           "op": "rename",
           "from": "WoWSPaint_paletteExpand",
           "to": "wowsPaint.palette.displayMode"
-        },
-        {
-          "op": "rename",
-          "from": "WoWSPaintDisableDragDrop",
-          "to": "wowsPaint.disableDragDrop"
         }
       ]
     }
