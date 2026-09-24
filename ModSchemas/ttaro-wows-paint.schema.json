@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "cmtkswux4000lv014rzn53jdu",
   "author": "ttaro",
   "modName": "WoWS Paint",
@@ -9,6 +9,7 @@
     {
       "kind": "group",
       "key": "cmtktam9p00a9v0d4akmnijs2",
+      "display": "section",
       "label": "IDS_TT_TITLE_GENERAL",
       "collapse": "expanded",
       "children": [
@@ -44,9 +45,22 @@
       ]
     },
     {
+      "kind": "setting",
+      "control": "number",
+      "key": "wowsPaint.selectedBrush",
+      "label": "Selected brush (runtime state)",
+      "default": 0,
+      "min": 0,
+      "max": 7,
+      "step": 1,
+      "hidden": true
+    },
+    {
       "kind": "group",
-      "key": "cmt4us0hs001ov0rwaru7jjn4",
-      "aggregate": "inline",
+      "key": "cmsll6ays000av0c48nv2ujp8",
+      "display": "section",
+      "label": "Palette Colors",
+      "collapse": "expanded",
       "children": [
         {
           "kind": "setting",
@@ -70,26 +84,7 @@
             }
           ],
           "optionStyle": "KEY"
-        }
-      ]
-    },
-    {
-      "kind": "setting",
-      "control": "number",
-      "key": "wowsPaint.selectedBrush",
-      "label": "Selected brush (runtime state)",
-      "default": 0,
-      "min": 0,
-      "max": 7,
-      "step": 1,
-      "hidden": true
-    },
-    {
-      "kind": "group",
-      "key": "cmsll6ays000av0c48nv2ujp8",
-      "label": "Palette Colors",
-      "collapse": "expanded",
-      "children": [
+        },
         {
           "kind": "setting",
           "control": "color",
