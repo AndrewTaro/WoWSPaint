@@ -5,6 +5,7 @@
   "modName": "WoWS Paint",
   "slug": "wows-paint",
   "order": 21,
+  "migrationVersion": 1,
   "tree": [
     {
       "kind": "group",
