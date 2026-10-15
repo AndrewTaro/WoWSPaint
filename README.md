@@ -9,6 +9,14 @@ These behaviors should be helpful for both situations.
 For example, when you are explaining something in combat, you probably don't want to press the clear button every time.  
 On the other hand, you also don't like to flush the drawings by mistake while casting a tournament and breaking down a strategy/POI.
 
+# 3D Mode
+Switch between **2D** and **3D** at the top of the palette, or with **Canvas Mode** in the config.  
+In 3D the lines are drawn on the game world itself: on the sea, the islands and the buildings. They stay where you drew them when the camera moves.
+
+- The world canvas is kept until you click the "Clear Canvas" button or the battle ends. Releasing the Ctrl key does not clear it.
+- The eraser removes the lines under its circle.
+- The 2D canvas is not drawn on while 3D is selected.
+
 # Overview
 ![Control Panel](https://github.com/AndrewTaro/WoWSPaint/assets/36262823/98f1e70b-9b8f-48ed-9e97-40a67c0d18a0)
 ![Paint as you like](https://github.com/AndrewTaro/WoWSPaint/assets/36262823/70df7676-651e-4307-a2db-edfce5d8c83d)

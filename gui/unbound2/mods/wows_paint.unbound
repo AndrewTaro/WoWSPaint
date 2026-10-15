@@ -1,13 +1,18 @@
-# Slot 0 is the eraser and is NOT a pref -- it is a brush MODE (it selects BlendMode.subtract
-# downstream), not a colour the user can pick. Slots 1..7 come from ttaro.wowsPaint.palette.color1..7.
-# Detect it by EQUALITY with this sentinel, never by sign: the palette now carries packed
-# 0xAARRGGBB values above 2^31, so a `< 0` test would depend on the bridge never handing one
-# back signed.
+
+
+
+
+
 (def constant WoWSPaint_ERASER_COLOR "-1")
 (def constant WoWSPaint_PALETTE_COLUMN_COUNT "4")
 (def constant WoWSPaint_PALETTE_SIZE "28px")
 (def constant WoWSPaint_PALETTE_GAP "3px")
 (def constant WoWSPaint_POSITION_KEY 'ttaro.wowsPaint.position')
+
+
+(def constant WoWSPaint_COMPONENT_KEY 'modWoWSPaint')
+(def constant WoWSPaint_MODE_2D "0")
+(def constant WoWSPaint_MODE_3D "1")
 
 (def element WorldOfWarshipsPaint() layout=true
 	(scope
@@ -24,6 +29,15 @@
 		(event evChangeColor)
 		(event evClearButtonClick)
 		(event evCheckMouseBeforeClear)
+		(event evModeChange)
+
+		(var worldWatcher:gfx = "$datahub.getPrimWatcher(CC.mods_DataComponent, WoWSPaint_COMPONENT_KEY)")
+		(var worldEntity:gfx = "worldWatcher.entity" (event "worldWatcher.event"))
+		(var is3DAvailable:bool = "worldEntity ? true : false")
+		(macro TT_GET_PREF _varName="'modePref'" _key="'ttaro.wowsPaint.canvasMode'")
+		(var canvasMode:number = "null != modePref && null != modePref.value ? modePref.value : WoWSPaint_MODE_2D")
+
+		(var is3D:bool = "is3DAvailable && canvasMode == WoWSPaint_MODE_3D")
 
 		(var mouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
 		(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
@@ -34,9 +48,9 @@
 		(var isDrawing:bool = "false" watch=false)
 		(bind isDrawing "$event.isDrawing" watch=false init=false (event "evStartDraw") (event "evStopDraw"))
 
-		# Palette is built ONCE here and threaded down as _palette -- reading the seven colour prefs
-		# in the tile renderer instead would stand up 7 watcher chains per tile across 8 tiles.
-		# Reactive on purpose (no watch=false): editing a colour in the config panel repaints live.
+
+
+
 		(macro TT_GET_PREF _varName="'color1'" _key="'ttaro.wowsPaint.palette.color1'")
 		(macro TT_GET_PREF _varName="'color2'" _key="'ttaro.wowsPaint.palette.color2'")
 		(macro TT_GET_PREF _varName="'color3'" _key="'ttaro.wowsPaint.palette.color3'")
@@ -44,21 +58,21 @@
 		(macro TT_GET_PREF _varName="'color5'" _key="'ttaro.wowsPaint.palette.color5'")
 		(macro TT_GET_PREF _varName="'color6'" _key="'ttaro.wowsPaint.palette.color6'")
 		(macro TT_GET_PREF _varName="'color7'" _key="'ttaro.wowsPaint.palette.color7'")
-		# Two parallel arrays.  `palette` is the packed 0xAARRGGBB, taken by EVERY colour target here
-		# -- the tile swatch's backgroundColor, the selected-slot compare, and both draw targets
-		# ($Sector's lineColor and graphics.lineStyle).  `.graphics` is the AS3 Sprite.graphics, so
-		# those two mask the colour to 24 bits; packed and 24-bit are interchangeable there.  They do
-		# NOT read alpha out of it, which is why `paletteAlpha` exists and rides the separate channel.
-		#
-		# ⚠ Both arrays read the component attribute BARE, and that is load-bearing: arithmetic on a
-		# value read off a gfx component yields 0, and a cast does not help.  If arithmetic is ever
-		# needed here, launder each channel through a :number-typed var first.
-		# `%` breaks above 2^31, so do not use modulo to strip the alpha byte.
-		#
-		# The null guards are load-bearing too: on the framework's derive() exception fallback the
-		# component is just {value, visible}, so every consumer must tolerate a missing field.
-		# Slot 0 is the eraser sentinel (-1), carried through to the draw targets unchanged; its
-		# paletteAlpha of 1.0 matches the pre-rework call, which passed no alpha argument at all.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 		(var palette:array = "[
 			WoWSPaint_ERASER_COLOR,
 			null != color1 && null != color1.value ? color1.value : 0xFFFF0000,
@@ -80,8 +94,8 @@
 			null != color7 && null != color7.a ? color7.a : 1.0
 		]")
 
-		# Runtime state, not a user-facing setting (the schema marks it hidden): seed once from the
-		# store, then the click event owns it -- hence watch=false, as in the pre-rewrite view.
+
+
 		(macro TT_GET_PREF _varName="'brushIndexPref'" _key="'ttaro.wowsPaint.selectedBrush'")
 		(var brushColorIndex:number = "null != brushIndexPref && null != brushIndexPref.value ? round(brushIndexPref.value) : 0" watch=false)
 		(bind brushColorIndex "$event.colorIndex" watch=false init=false (event "evChangeColor"))
@@ -98,36 +112,39 @@
 	)
 
 	(bindcall externalCall 'direct.action' "['mod.setPref', ['ttaro.wowsPaint.selectedBrush', $event.colorIndex]]" init=false watch=false (event "evChangeColor"))
+	(bindcall externalCall 'direct.action' "['mod.setPref', ['ttaro.wowsPaint.canvasMode', $event.mode]]" init=false watch=false (event "evModeChange"))
+
+	(bindcall externalCall 'direct.action' "['wowsPaint.clear', []]" init=false watch=false (bind enabled "is3DAvailable") (event "evClearButtonClick"))
 
 	(dispatch evMouseActive args="{}" (bind enabled "isMouseActive")  (bind trigger "isMouseActive"))
 	(dispatch evMouseInactive args="{}" (bind enabled "!isMouseActive") (bind trigger "isMouseActive"))
-	(dispatch evStartDraw dir="EventDirection.DOWN" args="{isDrawing:true, x: $event.x, y: $event.y}" (event "evMouseDown"))
+	(dispatch evStartDraw dir="EventDirection.DOWN" args="{isDrawing:true, x: $event.x, y: $event.y}" (bind enabled "!is3D") (event "evMouseDown"))
 	(dispatch evStopDraw dir="EventDirection.DOWN" args="{isDrawing:false}" (event "evMouseUp") (event "evMouseInactive"))
 	(dispatch evClearDraw dir="EventDirection.DOWN" args="{}" (event "evClearButtonClick"))
 	(dispatch evCheckMouseBeforeClear args="{}" delay=2 (bind enabled "isPlayer") (event "evMouseInactive"))
 	(dispatch evClearDraw args="{}" dir="EventDirection.DOWN" (bind enabled "!isMouseActive") (event "evCheckMouseBeforeClear"))
 
-	#canvas
+
 	(block
 		(style
 			(width = "100%")
 	 		(height = "100%")
 	 		(position = "absolute")
-			#(backgroundColor = 0x00FFFFFF)
-			#(hitTest = true)
+
+
 		)
 
-		#(dispatch evMouseDown args="{x: $event.stageX, y: $event.stageY}" on='mouseDown') #requires hitTest=true and backgroundColor
+
 		(dispatch evMouseDown args="{x: $event.stageX, y: $event.stageY}" on='stageMouseDown')
 		(dispatch evMouseUp dir="EventDirection.DOWN"  args="{}" on='stageMouseUp')
-		# (dispatch evStageMouseMove args="{x: $event.stageX, y: $event.stageY}" on='stageMouseMove')
-		# (dispatch evMouseMove dir="EventDirection.DOWN" (bind enabled "isDrawing") (event "evStageMouseMove"))
+
+
 		(dispatch evMouseMove dir="EventDirection.DOWN" args="$event ? {x: $event.stageX, y: $event.stageY} : null" on='stageMouseMove' (bind enabled "isDrawing"))
 
 		(controller $Repeat renderer='WoWSPaint_LayerElement'
-			#(bind count "0" watch=false (event "evClearDraw"))
-			# Destroy all the layers so they don't remain.
-			# Apparently, addChildAt can handle the element addition without binding count.
+
+
+
 			(args
 				_currentColor="brushColor"
 				_currentAlpha="brushAlpha"
@@ -137,15 +154,15 @@
 		(bindcall removeChildren watch=false init=false  (event "evClearDraw"))
 		(blendMode = 'layer')
 	)
-	#controls
-	(element WoWSPaint_ControlElement _currentColor="brushColor" _palette="palette")
 
-	# Brush
-	# (element WoWSPaint_BrushElement _currentColor="brushColor" _currentAlpha="brushAlpha" _size="brushSize")
+	(element WoWSPaint_ControlElement _currentColor="brushColor" _palette="palette" _is3DAvailable="is3DAvailable" _canvasMode="canvasMode")
 
-	# Experiment: this solves the perf issue?
+
+
+
+
 	(controller $Tooltip (renderer = 'WoWSPaint_BrushElement')
-		(args _currentColor="brushColor" _currentAlpha="brushAlpha" _size="brushSize")
+		(args _currentColor="brushColor" _currentAlpha="brushAlpha" _size="brushSize" _isVisible="!is3D")
 		(position="trackMouse")
 		(offset=[0,0])
 		(screenBoundsOffset={left:-100, top:-100, right:-100, bottom:-100})
@@ -154,17 +171,19 @@
 	)
 )
 
-(def element WoWSPaint_BrushElement(_currentColor:number, _currentAlpha:number, _size:number)
+(def element WoWSPaint_BrushElement(_currentColor:number, _currentAlpha:number, _size:number, _isVisible:bool=true)
 	(scope
 		(var isSmall:bool = "_size < 5 ? true : false")
 	)
+
+	(bind visible "_isVisible")
 
 	(style
 		(hitTest = false)
 	)
 
-	# lineColor does not apply the high byte as alpha, so the stored alpha cannot arrive through it
-	# -- hence the sibling lineAlpha.  Still pass the packed value: the target wants a full 32-bit ARGB.
+
+
 	(controller $Sector
 		(bind arc "360")
 		(bind radius "isSmall ? _size : _size / 2")
@@ -185,13 +204,13 @@
 		(var stage:gfx = "$datahub.getSingleComponent(CC.stage)")
 		(var scale:number = "stage.scale" (event "stage.evStageSizeChanged"))
 
-		# Drawing starts as soon as element initialization completes
-		# So color and isEraser should not change during that phase.
+
+
 		(var isEraser:bool = "_currentColor == WoWSPaint_ERASER_COLOR" watch=false)
 		(var brushSize:number = "isEraser ? 50 : 3")
 
-		# Layer becomes Active by default when entering the stage.
-		# Then it becomes Inactive if the mouse button is up, or drawing ends.
+
+
 		(var isActiveLayer:bool = "true" watch=false)
 		(bind isActiveLayer "false" init=false (event "evMouseUp"))
 	)
@@ -201,39 +220,39 @@
 		(height = "100%")
 		(hitTest = false)
 		(position = "absolute")
-		# The stroke's opacity belongs on the LAYER, not on its geometry.  lineStyle applies alpha
-		# per SEGMENT, and a freehand stroke is a polyline whose segments overlap at every joint, so
-		# each vertex composited twice -- 1-(1-a)^2 rather than a -- and the stroke came out beaded
-		# with near-solid dots at the mouse sample rate.  Drawing the geometry opaque and fading the
-		# whole layer composites it once (that is what the blendMode below is for), so overlap can no
-		# longer change opacity.  One layer is one stroke, so this is per-stroke alpha.
-		# `=` not `bind`: it evaluates once at construction, which is what freezes this stroke's alpha
-		# against a later brush change -- the same reason isEraser above is captured rather than bound.
+
+
+
+
+
+
+
+
 		(alpha = "_currentAlpha")
 	)
 
 	(.graphics
-		# lineStyle is positional (thickness, color, alpha) and is the AS3 call: the colour is masked
-		# to 24 bits, so passing the packed value is fine (see the lineColor note above).
-		# Alpha is deliberately 1 here and applied to the layer instead (see the style block): a
-		# per-segment alpha beads the stroke at every joint.  The high byte is masked off, not applied
-		# as alpha, so nothing is attenuated twice.
+
+
+
+
+
 		(bindcall lineStyle "brushSize" "_currentColor" "1" watch=false init=false (bind enabled "isActiveLayer") (event "evStartDraw"))
 		(bindcall moveTo "round($event.x / scale)" "round($event.y / scale)" watch=false init=false (bind enabled "isActiveLayer") (event "evStartDraw"))
 		(bindcall lineTo "round($event.x / scale)" "round($event.y / scale)" watch=false init=false (bind enabled "isActiveLayer") (event "evMouseMove"))
 		(bindcall clear watch=false init=false (event "evClearDraw"))
 	)
 	(blendMode = "isEraser ? 'subtract' : 'layer'")
-	# Do not use BlendMode.ERASE since it literally erases everything, including the layers above it.
+
 )
 
-(def element WoWSPaint_ControlElement(_currentColor:number, _palette:array)
+(def element WoWSPaint_ControlElement(_currentColor:number, _palette:array, _is3DAvailable:bool=false, _canvasMode:number=0)
 	(scope
 		(var mouse:gfx = "$datahub.getSingleComponent(CC.mouse)")
 		(var isMouseActive:bool = "mouse.active" (event "mouse.evActiveChanged"))
 
-		# Python owns the position value AND the first-placement default (CMS anchor/offset), so the
-		# old view-side defaultPos + stageHeight math is gone.
+
+
 		(macro TT_DRAGGABLE_POSITION _fullKey="WoWSPaint_POSITION_KEY")
 		(macro TT_GET_PREF _varName="'lockPref'" _key="'ttaro.wowsPaint.disableDragDrop'")
 		(var isPositionLocked:bool = "null != lockPref && null != lockPref.value ? lockPref.value : false")
@@ -247,8 +266,8 @@
 		(var isPaletteVisible:bool = "paletteMode == TT_CONST.DISPLAY_MODE.ADAPTIVE ? altVision : paletteMode")
 	)
 
-	# The HUD chevron writes the resolved 0/1 -- an explicit click leaves ADAPTIVE rather than
-	# toggling within it, which is the only reading that keeps one click = one visible change.
+
+
 	(bindcall externalCall 'direct.action' "['mod.setPref', ['ttaro.wowsPaint.palette.displayMode', $event.value ? TT_CONST.DISPLAY_MODE.ENABLED : TT_CONST.DISPLAY_MODE.DISABLED]]" init=false watch=false (event "evExpandButtonClick"))
 
 	(style
@@ -274,16 +293,16 @@
 	)
 
 	(block
-		# Full-size transparent drag surface. MUST stay declared before the content block below --
-		# that document order is what keeps TT_DRAGGABLE's signifier behind the controls.
-		# hitTest follows the lock: the macro gates the writes and the signifier, but only dropping
-		# hitTest here also suppresses the drag-hint tooltip.
+
+
+
+
 		(block
 			(class $FullsizeAbsolute)
-			# 0x00FFFFFF, not 0x01000000: alpha-0x00 still registers hits, while 0x01000000 renders a
-			# visible dark tint over the whole element.
-			# hitTest is a STYLE property: bound at element level it resolves against the backing
-			# UbSprite and throws "access of undefined method 'hitTest'".  It must sit inside (style).
+
+
+
+
 			(style
 				(backgroundColor = 0x00FFFFFF)
 				(bind hitTest "!isPositionLocked")
@@ -297,28 +316,18 @@
 				(padding = 10px)
 			)
 
-			(hblock
-				(style
-					(align = "middle|center")
-				)
-				# expander
-				(element WoWSPaint_ExpandButtonElement _isPaletteVisible="isPaletteVisible")
 
-				(tf
-					(class $TextDefaultBoldNM)
-					(text = "'|'")
-					(style
-						(hitTest = false)
-						(marginRight = 5px)
-						(alpha = "0.5")
-					)
+			(block
+				(controller $Instance renderer='WoWSPaint_ModeSwitchElement'
+					(bind enabled "_is3DAvailable")
+					(args _canvasMode="_canvasMode")
 				)
-		
-				# reset
-				(element WoWSPaint_ResetButtonElement)
 			)
 
-			# color palette
+
+			(element WoWSPaint_ResetButtonElement)
+
+
 			(block
 				(controller $Instance renderer='WoWSPaint_ColorPaletteElement'
 					(bind enabled "isPaletteVisible")
@@ -326,6 +335,54 @@
 				)
 			)
 		)
+
+		(element WoWSPaint_ExpandButtonElement _isPaletteVisible="isPaletteVisible"
+			(style
+				(position = "absolute")
+				(left = -28px)
+				(top = 5px)
+			)
+		)
+	)
+)
+
+(def element WoWSPaint_ModeSwitchElement(_canvasMode:number)
+	(style
+		(flow = "Flow.HORIZONTAL")
+		(hgap = 8px)
+		(align = "middle|center")
+		(marginBottom = 10px)
+	)
+	(element WoWSPaint_ModeTabElement _label="'2D'" _mode="WoWSPaint_MODE_2D" _canvasMode="_canvasMode")
+	(element WoWSPaint_ModeTabElement _label="'3D'" _mode="WoWSPaint_MODE_3D" _canvasMode="_canvasMode")
+)
+
+(def element WoWSPaint_ModeTabElement(_label:str, _mode:number, _canvasMode:number)
+	(scope
+		(event evModeChange)
+		(macro MOUSE_HANDLER_SCOPE)
+
+		(var isSelected:bool = "_mode == _canvasMode")
+		(var isRollover:bool = "rollOver")
+	)
+
+	(style
+		(hitTest = true)
+	)
+
+	(tf
+		(class $TextDefaultBoldNM)
+		(bind text "_label")
+		(style
+			(hitTest = false)
+		)
+	)
+
+	(bind alpha "isSelected ? 1.0 : isRollover ? 0.8 : 0.4")
+
+	(dispatch evModeChange on='click' args="{mode: _mode}" dir="EventDirection.UP")
+	(macro MOUSE_HANDLER
+		_soundSet = "'button_tab'"
 	)
 )
 
@@ -342,8 +399,8 @@
 		(var ctDown:dict = "	{ redMultiplier: 1,	greenMultiplier: 1,	blueMultiplier: 1,	alphaMultiplier: 1,
 								  redOffset: -15,	greenOffset: -15,	blueOffset: -15,	alphaOffset: 0 }")
 
-		# Purely presentational: the host resolves the mode (incl. ADAPTIVE) and owns the write, so the
-		# chevron always points at what is actually on screen. Clicking just dispatches the negation UP.
+
+
 		(var targetRotation:number = "_isPaletteVisible ? 90 : 0")
 	)
 
@@ -367,8 +424,8 @@
 			)
 		)
 
-		# Click only. The old addedToStage dispatch seeded the host's local copy of the flag; the host
-		# now reads the pref itself, and re-firing on mount would write ADAPTIVE straight back to 0/1.
+
+
 		(dispatch evExpandButtonClick dir="EventDirection.UP" args="{value: !_isPaletteVisible}" on='click')
 
 		(macro MOUSE_HANDLER

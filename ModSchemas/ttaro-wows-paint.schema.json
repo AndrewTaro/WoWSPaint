@@ -16,6 +16,27 @@
       "children": [
         {
           "kind": "setting",
+          "control": "dropdown",
+          "key": "wowsPaint.canvasMode",
+          "label": "IDS_TT_CANVAS_MODE",
+          "hint": {
+            "text": "IDS_TT_HINT_CANVAS_MODE"
+          },
+          "default": 0,
+          "options": [
+            {
+              "value": 0,
+              "phrase": "IDS_TT_CANVAS_MODE_2D"
+            },
+            {
+              "value": 1,
+              "phrase": "IDS_TT_CANVAS_MODE_3D"
+            }
+          ],
+          "optionStyle": "CUSTOM_TEXT"
+        },
+        {
+          "kind": "setting",
           "control": "toggle",
           "key": "wowsPaint.disableDragDrop",
           "label": "IDS_TT_DISABLE_DRAG_DROP",
